@@ -1,5 +1,5 @@
 - [x] starring tasks
-- [ ] list folders
+- [x] list folders
 - [ ] g cal integration
 - [ ] chrome extension
 - [x] drag and drop tasks between lists

@@ -12,6 +12,10 @@ const api: Api = {
     getAll: () => ipcRenderer.invoke(CHANNELS.listsGetAll),
     save: (lists) => ipcRenderer.invoke(CHANNELS.listsSave, lists)
   },
+  folders: {
+    getAll: () => ipcRenderer.invoke(CHANNELS.foldersGetAll),
+    save: (folders) => ipcRenderer.invoke(CHANNELS.foldersSave, folders)
+  },
   settings: {
     getSynced: () => ipcRenderer.invoke(CHANNELS.settingsGetSynced),
     saveSynced: (settings) => ipcRenderer.invoke(CHANNELS.settingsSaveSynced, settings),

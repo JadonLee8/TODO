@@ -8,7 +8,7 @@ Plan for everything in `TODO.md`. The items are ordered so that each phase build
 | 2 | Sidebar search bar | M | No | ✅ Done |
 | 3 | Starring tasks (finish it) | S–M | Maybe (one optional synced setting) | ✅ Done |
 | 4 | Drag and drop tasks between lists | M | No | ✅ Done |
-| 5 | List folders | L | **Yes**: new `data/folders.json`, `TaskList.folderId` | Not started |
+| 5 | List folders | L | **Yes**: new `data/folders.json`, `TaskList.folderId` | ✅ Done |
 | 6 | Google Calendar integration | XL | **Yes**: synced calendar settings, `TaskSource.htmlLink` | Not started |
 | 7 | Chrome extension | L | No (writes the existing task format) | Not started |
 
@@ -70,7 +70,7 @@ Use the browser's native HTML5 drag-and-drop. It works in Electron and needs no 
 - Out of scope: reordering tasks by hand inside a list. The main list is ranked automatically and the other lists sort by date, so manual order has no meaning there.
 - This phase builds the drag-and-drop plumbing, with a typed MIME string for each kind of draggable thing, that phase 5 reuses for dragging lists into folders.
 
-## Phase 5: list folders (L)
+## Phase 5: list folders (L) — ✅ Done
 
 **Data model** (`shared/types.ts`):
 

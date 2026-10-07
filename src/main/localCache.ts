@@ -1,12 +1,12 @@
 import { app } from 'electron'
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, rmSync } from 'fs'
 import { join } from 'path'
-import type { SyncedSettings, Task, TaskList } from '@shared/types'
+import type { SyncedSettings, Task, TaskFolder, TaskList } from '@shared/types'
 import { DEFAULT_SYNCED_SETTINGS } from '@shared/types'
 
 /**
  * Local-first cache mirroring the shape of the GitHub repo's `data/` directory:
- *   cache/tasks/<id>.json, cache/lists.json, cache/settings.json
+ *   cache/tasks/<id>.json, cache/lists.json, cache/folders.json, cache/settings.json
  * `cache/synced/...` holds the last content known to match GitHub exactly — used as the
  * "base" for conflict comparisons and to know each file's last-known blob sha.
  * `sync-meta.json` tracks which files have local edits pending push.
@@ -19,6 +19,7 @@ export interface SyncMeta {
   /** Tasks with an unresolved edit-vs-edit conflict (persisted so a restart doesn't lose them). */
   conflictTaskIds: string[]
   listsDirty: boolean
+  foldersDirty: boolean
   settingsDirty: boolean
   lastSyncedAt: string | null
 }
@@ -29,6 +30,7 @@ const EMPTY_META: SyncMeta = {
   deletedTaskIds: [],
   conflictTaskIds: [],
   listsDirty: false,
+  foldersDirty: false,
   settingsDirty: false,
   lastSyncedAt: null
 }
@@ -50,6 +52,12 @@ function listsPath(): string {
 }
 function syncedListsPath(): string {
   return join(root(), 'synced', 'lists.json')
+}
+function foldersPath(): string {
+  return join(root(), 'folders.json')
+}
+function syncedFoldersPath(): string {
+  return join(root(), 'synced', 'folders.json')
 }
 function settingsPath(): string {
   return join(root(), 'settings.json')
@@ -128,6 +136,21 @@ export function setSyncedLists(lists: TaskList[]): void {
   writeJson(syncedListsPath(), lists)
 }
 
+// ---- Folders ----
+
+export function getFolders(): TaskFolder[] {
+  return readJson<TaskFolder[]>(foldersPath(), [])
+}
+export function writeFoldersLocal(folders: TaskFolder[]): void {
+  writeJson(foldersPath(), folders)
+}
+export function getSyncedFolders(): TaskFolder[] | null {
+  return existsSync(syncedFoldersPath()) ? readJson<TaskFolder[]>(syncedFoldersPath(), []) : null
+}
+export function setSyncedFolders(folders: TaskFolder[]): void {
+  writeJson(syncedFoldersPath(), folders)
+}
+
 // ---- Settings ----
 
 export function getSettings(): SyncedSettings {
@@ -200,6 +223,12 @@ export function acceptRemoteTask(task: Task): void {
 export function markListsDirty(): void {
   const meta = getSyncMeta()
   meta.listsDirty = true
+  writeSyncMeta(meta)
+}
+
+export function markFoldersDirty(): void {
+  const meta = getSyncMeta()
+  meta.foldersDirty = true
   writeSyncMeta(meta)
 }
 

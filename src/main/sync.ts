@@ -1,4 +1,4 @@
-import type { SyncConflict, SyncResult, Task, TaskList, SyncedSettings } from '@shared/types'
+import type { SyncConflict, SyncResult, Task, TaskFolder, TaskList, SyncedSettings } from '@shared/types'
 import { GitHubConflictError, deleteFile, getDataTree, getFileContent, putFile } from './github'
 import * as cache from './localCache'
 
@@ -12,7 +12,7 @@ import * as cache from './localCache'
  *  - Task edited on both sides differently -> surfaced as a SyncConflict for the user to resolve.
  *  - Task deleted locally but edited remotely -> the remote edit wins, local deletion is dropped.
  *  - Task edited locally but deleted remotely -> the local edit wins, file is recreated on push.
- *  - lists.json / settings.json (single shared files, rarely edited) -> last writer to sync wins;
+ *  - lists.json / folders.json / settings.json (single shared files) -> last writer to sync wins;
  *    a losing local edit is discarded in favor of pulling the current remote copy.
  */
 export async function syncNow(token: string, owner: string, repo: string, branch: string): Promise<SyncResult> {
@@ -86,6 +86,12 @@ export async function syncNow(token: string, owner: string, repo: string, branch
       else pushed++
       meta.listsDirty = false
     }
+    if (meta.foldersDirty) {
+      const result = await pushSingleFile(token, owner, repo, branch, FOLDERS_PATH, cache.getFolders(), meta)
+      if (result === 'pulled-instead') cache.writeFoldersLocal(JSON.parse((await getFileContent(token, owner, repo, FOLDERS_PATH, branch))!.content))
+      else pushed++
+      meta.foldersDirty = false
+    }
     if (meta.settingsDirty) {
       const result = await pushSingleFile(token, owner, repo, branch, SETTINGS_PATH, cache.getSettings(), meta)
       if (result === 'pulled-instead') cache.writeSettingsLocal(JSON.parse((await getFileContent(token, owner, repo, SETTINGS_PATH, branch))!.content))
@@ -127,6 +133,7 @@ export async function syncNow(token: string, owner: string, repo: string, branch
     }
 
     pulled += await pullSingleFileIfChanged(token, owner, repo, branch, LISTS_PATH, remoteByPath, meta, (lists: TaskList[]) => cache.writeListsLocal(lists))
+    pulled += await pullSingleFileIfChanged(token, owner, repo, branch, FOLDERS_PATH, remoteByPath, meta, (folders: TaskFolder[]) => cache.writeFoldersLocal(folders))
     pulled += await pullSingleFileIfChanged(token, owner, repo, branch, SETTINGS_PATH, remoteByPath, meta, (s: SyncedSettings) => cache.writeSettingsLocal(s))
 
     meta.lastSyncedAt = new Date().toISOString()
@@ -139,6 +146,7 @@ export async function syncNow(token: string, owner: string, repo: string, branch
 }
 
 const LISTS_PATH = 'data/lists.json'
+const FOLDERS_PATH = 'data/folders.json'
 const SETTINGS_PATH = 'data/settings.json'
 
 function taskPath(id: string): string {

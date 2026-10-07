@@ -30,6 +30,17 @@ export interface TaskSource {
 export interface TaskList {
   id: string
   name: string
+  /** Position among its siblings: inside its folder, or at the top level alongside folders. */
+  order: number
+  /** The folder this list sits in; null/absent = top level. */
+  folderId?: string | null
+}
+
+/** A sidebar folder grouping lists. One level deep only. Stored in data/folders.json. */
+export interface TaskFolder {
+  id: string
+  name: string
+  /** Shares one order space with the top-level lists. */
   order: number
 }
 

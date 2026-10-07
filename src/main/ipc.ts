@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron'
-import type { LocalSettings, SyncedSettings, SyncConflict, Task, TaskList } from '@shared/types'
+import type { LocalSettings, SyncedSettings, SyncConflict, Task, TaskFolder, TaskList } from '@shared/types'
 import { CHANNELS, type TokenCheckResult } from '@shared/ipc'
 import * as cache from './localCache'
 import * as secureStore from './secureStore'
@@ -21,6 +21,12 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(CHANNELS.listsSave, (_e, lists: TaskList[]) => {
     cache.writeListsLocal(lists)
     cache.markListsDirty()
+  })
+
+  ipcMain.handle(CHANNELS.foldersGetAll, () => cache.getFolders())
+  ipcMain.handle(CHANNELS.foldersSave, (_e, folders: TaskFolder[]) => {
+    cache.writeFoldersLocal(folders)
+    cache.markFoldersDirty()
   })
 
   ipcMain.handle(CHANNELS.settingsGetSynced, () => cache.getSettings())

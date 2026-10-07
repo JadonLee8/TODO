@@ -1,4 +1,4 @@
-import type { LocalSettings, SyncConflict, SyncResult, SyncedSettings, Task, TaskList } from './types'
+import type { LocalSettings, SyncConflict, SyncResult, SyncedSettings, Task, TaskFolder, TaskList } from './types'
 
 /** Channel names shared between preload (sender) and main (handler) to avoid typos. */
 export const CHANNELS = {
@@ -7,6 +7,8 @@ export const CHANNELS = {
   tasksRemove: 'tasks:remove',
   listsGetAll: 'lists:getAll',
   listsSave: 'lists:save',
+  foldersGetAll: 'folders:getAll',
+  foldersSave: 'folders:save',
   settingsGetSynced: 'settings:getSynced',
   settingsSaveSynced: 'settings:saveSynced',
   settingsGetLocal: 'settings:getLocal',
@@ -36,6 +38,10 @@ export interface Api {
   lists: {
     getAll(): Promise<TaskList[]>
     save(lists: TaskList[]): Promise<void>
+  }
+  folders: {
+    getAll(): Promise<TaskFolder[]>
+    save(folders: TaskFolder[]): Promise<void>
   }
   settings: {
     getSynced(): Promise<SyncedSettings>

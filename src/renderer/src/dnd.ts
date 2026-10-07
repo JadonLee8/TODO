@@ -2,6 +2,7 @@ import type { DragEvent } from 'react'
 
 /** One MIME type per kind of draggable thing, so drop targets only react to what they accept. */
 export const TASK_MIME = 'application/x-todo-task'
+export const LIST_MIME = 'application/x-todo-list'
 
 export function dragHasType(e: DragEvent, mime: string): boolean {
   return e.dataTransfer.types.includes(mime)
@@ -16,6 +17,8 @@ export function dropTargetProps(mime: string, onActiveChange: (active: boolean) 
     onDragOver: (e: DragEvent) => {
       if (!dragHasType(e, mime)) return
       e.preventDefault()
+      // Targets can be nested (a folder inside the list area); the innermost one handles the drag.
+      e.stopPropagation()
       e.dataTransfer.dropEffect = 'move'
       onActiveChange(true)
     },
@@ -27,6 +30,7 @@ export function dropTargetProps(mime: string, onActiveChange: (active: boolean) 
     onDrop: (e: DragEvent) => {
       if (!dragHasType(e, mime)) return
       e.preventDefault()
+      e.stopPropagation()
       onActiveChange(false)
       const id = e.dataTransfer.getData(mime)
       if (id) onDropId(id)

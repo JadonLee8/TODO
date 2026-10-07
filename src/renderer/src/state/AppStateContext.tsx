@@ -1,9 +1,10 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import type { LocalSettings, Priority, SyncConflict, SyncResult, SyncedSettings, Task, TaskList } from '@shared/types'
+import type { LocalSettings, Priority, SyncConflict, SyncResult, SyncedSettings, Task, TaskFolder, TaskList } from '@shared/types'
 import { DEFAULT_LOCAL_SETTINGS, DEFAULT_SYNCED_SETTINGS, MAIN_LIST_ID } from '@shared/types'
 import type { TokenCheckResult } from '@shared/ipc'
 import { newId } from '@shared/id'
 import { taskIdsToArchive } from '@shared/archive'
+import { nextOrderInFolder, nextTopLevelOrder } from '@shared/sidebarTree'
 
 /** What the main pane is showing. */
 export type View = { kind: 'list'; listId: string } | { kind: 'important' } | { kind: 'search'; query: string }
@@ -36,6 +37,15 @@ interface AppState {
   renameList: (id: string, name: string) => Promise<void>
   deleteList: (id: string) => Promise<void>
 
+  folders: TaskFolder[]
+  /** Creates a folder at the bottom of the top level and returns its id. */
+  addFolder: (name: string) => Promise<string | null>
+  renameFolder: (id: string, name: string) => Promise<void>
+  /** Deletes a folder; its lists move back to the top level (nothing else is deleted). */
+  deleteFolder: (id: string) => Promise<void>
+  /** Moves a list into a folder, or to the top level with null. */
+  moveListToFolder: (listId: string, folderId: string | null) => Promise<void>
+
   saveSyncedSettings: (settings: SyncedSettings) => Promise<void>
   saveLocalSettings: (settings: Omit<LocalSettings, 'hasToken'>) => Promise<void>
   saveToken: (token: string) => Promise<void>
@@ -53,6 +63,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
   const [loading, setLoading] = useState(true)
   const [tasks, setTasks] = useState<Task[]>([])
   const [lists, setLists] = useState<TaskList[]>([])
+  const [folders, setFolders] = useState<TaskFolder[]>([])
   const [syncedSettings, setSyncedSettings] = useState<SyncedSettings>(DEFAULT_SYNCED_SETTINGS)
   const [localSettings, setLocalSettings] = useState<LocalSettings>(DEFAULT_LOCAL_SETTINGS)
   const [view, setView] = useState<View>({ kind: 'list', listId: MAIN_LIST_ID })
@@ -63,9 +74,10 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
 
   useEffect(() => {
     void (async () => {
-      const [loadedTasks, loadedLists, loadedSyncedSettings, loadedLocalSettings, loadedConflicts] = await Promise.all([
+      const [loadedTasks, loadedLists, loadedFolders, loadedSyncedSettings, loadedLocalSettings, loadedConflicts] = await Promise.all([
         window.api.tasks.getAll(),
         window.api.lists.getAll(),
+        window.api.folders.getAll(),
         window.api.settings.getSynced(),
         window.api.settings.getLocal(),
         window.api.sync.getPendingConflicts()
@@ -79,6 +91,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
 
       setTasks(loadedTasks)
       setLists(finalLists)
+      setFolders(loadedFolders)
       setSyncedSettings(loadedSyncedSettings)
       setLocalSettings(loadedLocalSettings)
       setConflicts(loadedConflicts)
@@ -176,10 +189,10 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
     async (name: string) => {
       const trimmed = name.trim()
       if (!trimmed) return
-      const list: TaskList = { id: newId(), name: trimmed, order: lists.length }
+      const list: TaskList = { id: newId(), name: trimmed, order: nextTopLevelOrder(lists, folders), folderId: null }
       await saveLists([...lists, list])
     },
-    [lists, saveLists]
+    [lists, folders, saveLists]
   )
 
   const renameList = useCallback(
@@ -232,15 +245,68 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
 
   const verifyToken = useCallback(() => window.api.settings.verifyToken(), [])
 
+  const saveFolders = useCallback(async (next: TaskFolder[]) => {
+    setFolders(next)
+    await window.api.folders.save(next)
+  }, [])
+
+  const addFolder = useCallback(
+    async (name: string) => {
+      const trimmed = name.trim()
+      if (!trimmed) return null
+      const folder: TaskFolder = { id: newId(), name: trimmed, order: nextTopLevelOrder(lists, folders) }
+      await saveFolders([...folders, folder])
+      return folder.id
+    },
+    [lists, folders, saveFolders]
+  )
+
+  const renameFolder = useCallback(
+    async (id: string, name: string) => {
+      const trimmed = name.trim()
+      if (!trimmed) return
+      await saveFolders(folders.map((f) => (f.id === id ? { ...f, name: trimmed } : f)))
+    },
+    [folders, saveFolders]
+  )
+
+  const deleteFolder = useCallback(
+    async (id: string) => {
+      const remaining = folders.filter((f) => f.id !== id)
+      // Its lists go back to the top level, after everything already there, keeping their relative order.
+      let order = nextTopLevelOrder(lists, remaining)
+      const contained = lists.filter((l) => l.folderId === id).sort((a, b) => a.order - b.order)
+      const newOrder = new Map(contained.map((l) => [l.id, order++]))
+      if (contained.length) {
+        await saveLists(lists.map((l) => (newOrder.has(l.id) ? { ...l, folderId: null, order: newOrder.get(l.id)! } : l)))
+      }
+      await saveFolders(remaining)
+    },
+    [lists, folders, saveLists, saveFolders]
+  )
+
+  const moveListToFolder = useCallback(
+    async (listId: string, folderId: string | null) => {
+      const list = lists.find((l) => l.id === listId)
+      if (!list || listId === MAIN_LIST_ID || (list.folderId ?? null) === folderId) return
+      const others = lists.filter((l) => l.id !== listId)
+      const order = folderId ? nextOrderInFolder(others, folderId) : nextTopLevelOrder(others, folders)
+      await saveLists(lists.map((l) => (l.id === listId ? { ...l, folderId, order } : l)))
+    },
+    [lists, folders, saveLists]
+  )
+
   const refreshFromCache = useCallback(async () => {
-    const [nextTasks, nextLists, nextSettings, nextConflicts] = await Promise.all([
+    const [nextTasks, nextLists, nextFolders, nextSettings, nextConflicts] = await Promise.all([
       window.api.tasks.getAll(),
       window.api.lists.getAll(),
+      window.api.folders.getAll(),
       window.api.settings.getSynced(),
       window.api.sync.getPendingConflicts()
     ])
     setTasks(nextTasks)
     setLists(nextLists)
+    setFolders(nextFolders)
     setSyncedSettings(nextSettings)
     setConflicts(nextConflicts)
   }, [])
@@ -295,6 +361,11 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
       addList,
       renameList,
       deleteList,
+      folders,
+      addFolder,
+      renameFolder,
+      deleteFolder,
+      moveListToFolder,
       saveSyncedSettings,
       saveLocalSettings,
       saveToken,
@@ -327,6 +398,11 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
       addList,
       renameList,
       deleteList,
+      folders,
+      addFolder,
+      renameFolder,
+      deleteFolder,
+      moveListToFolder,
       saveSyncedSettings,
       saveLocalSettings,
       saveToken,

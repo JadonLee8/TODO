@@ -32,11 +32,14 @@ Plain JSON, one task per file, is deliberately chosen for portability: any langu
 
 ```
 data/
-  lists.json          # [{ id, name, order }]
+  lists.json          # [{ id, name, order, folderId }]
+  folders.json        # [{ id, name, order }] (sidebar folders, one level deep)
   settings.json        # ranking + archive settings (not secret, synced)
   tasks/
     <uuid>.json        # one Task per file
 ```
+
+`lists.json`, `folders.json` and `settings.json` are each a single shared file, and the last device to sync wins. If two devices both reorganize lists or folders before syncing, one device's changes are lost (tasks themselves are never affected). A list whose folder was deleted on another device just shows up at the top level.
 
 See `src/shared/types.ts` for the exact `Task`, `TaskList`, and `SyncedSettings` shapes — that file is the source of truth for the on-disk format.
 
