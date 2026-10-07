@@ -1,5 +1,6 @@
 import type { Task } from '@shared/types'
 import { PRIORITY_COLORS } from '../priorityUi'
+import { TASK_MIME } from '../dnd'
 
 export function TaskRow({
   task,
@@ -18,7 +19,16 @@ export function TaskRow({
   onToggleStar: () => void
 }) {
   return (
-    <div className={`task-row${conflicted ? ' conflicted' : ''}${task.completed ? ' completed' : ''}`} onClick={onClick}>
+    <div
+      className={`task-row${conflicted ? ' conflicted' : ''}${task.completed ? ' completed' : ''}`}
+      onClick={onClick}
+      // Conflicted tasks can't be dragged: moving one would stack another edit on an unresolved conflict.
+      draggable={!conflicted}
+      onDragStart={(e) => {
+        e.dataTransfer.setData(TASK_MIME, task.id)
+        e.dataTransfer.effectAllowed = 'move'
+      }}
+    >
       <button
         className={`checkbox${task.completed ? ' checked' : ''}`}
         onClick={(e) => {

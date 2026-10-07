@@ -27,6 +27,9 @@ interface AppState {
   updateTask: (task: Task) => Promise<void>
   toggleComplete: (task: Task) => Promise<void>
   toggleStarred: (task: Task) => Promise<void>
+  /** Moves a task to another list; a no-op if it is already there. */
+  moveTask: (id: string, listId: string) => Promise<void>
+  starTask: (id: string) => Promise<void>
   deleteTask: (id: string) => Promise<void>
 
   addList: (name: string) => Promise<void>
@@ -129,6 +132,24 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
   )
 
   const toggleStarred = useCallback(async (task: Task) => updateTask({ ...task, starred: !task.starred }), [updateTask])
+
+  const moveTask = useCallback(
+    async (id: string, listId: string) => {
+      const task = tasks.find((t) => t.id === id)
+      if (!task || task.listId === listId) return
+      await updateTask({ ...task, listId })
+    },
+    [tasks, updateTask]
+  )
+
+  const starTask = useCallback(
+    async (id: string) => {
+      const task = tasks.find((t) => t.id === id)
+      if (!task || task.starred) return
+      await updateTask({ ...task, starred: true })
+    },
+    [tasks, updateTask]
+  )
 
   // Auto-archive completed tasks older than the configured retention window.
   useEffect(() => {
@@ -268,6 +289,8 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
       updateTask,
       toggleComplete,
       toggleStarred,
+      moveTask,
+      starTask,
       deleteTask,
       addList,
       renameList,
@@ -298,6 +321,8 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
       updateTask,
       toggleComplete,
       toggleStarred,
+      moveTask,
+      starTask,
       deleteTask,
       addList,
       renameList,

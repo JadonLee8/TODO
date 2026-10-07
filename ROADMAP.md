@@ -7,7 +7,7 @@ Plan for everything in `TODO.md`. The items are ordered so that each phase build
 | 1 | Denser sidebar | S | No | ✅ Done |
 | 2 | Sidebar search bar | M | No | ✅ Done |
 | 3 | Starring tasks (finish it) | S–M | Maybe (one optional synced setting) | ✅ Done |
-| 4 | Drag and drop tasks between lists | M | No | Not started |
+| 4 | Drag and drop tasks between lists | M | No | ✅ Done |
 | 5 | List folders | L | **Yes**: new `data/folders.json`, `TaskList.folderId` | Not started |
 | 6 | Google Calendar integration | XL | **Yes**: synced calendar settings, `TaskSource.htmlLink` | Not started |
 | 7 | Chrome extension | L | No (writes the existing task format) | Not started |
@@ -60,7 +60,7 @@ This is already partly built. The `starred` field exists, rows have a star butto
 
 Files: `Sidebar.tsx`, `TaskListView.tsx`, `AppStateContext.tsx`, `shared/ranking.ts`, `shared/types.ts`, `SettingsModal.tsx`.
 
-## Phase 4: drag and drop tasks between lists (M)
+## Phase 4: drag and drop tasks between lists (M) — ✅ Done
 
 Use the browser's native HTML5 drag-and-drop. It works in Electron and needs no new dependency.
 
