@@ -6,7 +6,7 @@ import { newId } from '@shared/id'
 import { taskIdsToArchive } from '@shared/archive'
 
 /** What the main pane is showing. */
-export type View = { kind: 'list'; listId: string } | { kind: 'search'; query: string }
+export type View = { kind: 'list'; listId: string } | { kind: 'important' } | { kind: 'search'; query: string }
 
 interface AppState {
   loading: boolean
@@ -20,9 +20,10 @@ interface AppState {
   lastSyncResult: SyncResult | null
 
   selectList: (id: string) => void
+  setView: (view: View) => void
   /** Switches to the search view; a blank query returns to the view that was showing before the search. */
   setSearchQuery: (query: string) => void
-  addTask: (input: { title: string; listId: string; priority?: Priority }) => Promise<void>
+  addTask: (input: { title: string; listId: string; priority?: Priority; starred?: boolean }) => Promise<void>
   updateTask: (task: Task) => Promise<void>
   toggleComplete: (task: Task) => Promise<void>
   toggleStarred: (task: Task) => Promise<void>
@@ -92,7 +93,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
     })
   }, [])
 
-  const addTask = useCallback(async (input: { title: string; listId: string; priority?: Priority }) => {
+  const addTask = useCallback(async (input: { title: string; listId: string; priority?: Priority; starred?: boolean }) => {
     const now = new Date().toISOString()
     const task: Task = {
       id: newId(),
@@ -100,7 +101,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
       title: input.title.trim(),
       notes: '',
       priority: input.priority ?? 3,
-      starred: false,
+      starred: input.starred ?? false,
       completed: false,
       createdAt: now,
       updatedAt: now,
@@ -261,6 +262,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
       syncing,
       lastSyncResult,
       selectList,
+      setView,
       setSearchQuery,
       addTask,
       updateTask,
@@ -290,6 +292,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
       syncing,
       lastSyncResult,
       selectList,
+      setView,
       setSearchQuery,
       addTask,
       updateTask,

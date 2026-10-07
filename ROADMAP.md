@@ -6,7 +6,7 @@ Plan for everything in `TODO.md`. The items are ordered so that each phase build
 |---|------|------|----------------------|--------|
 | 1 | Denser sidebar | S | No | ✅ Done |
 | 2 | Sidebar search bar | M | No | ✅ Done |
-| 3 | Starring tasks (finish it) | S–M | Maybe (one optional synced setting) | Not started |
+| 3 | Starring tasks (finish it) | S–M | Maybe (one optional synced setting) | ✅ Done |
 | 4 | Drag and drop tasks between lists | M | No | Not started |
 | 5 | List folders | L | **Yes**: new `data/folders.json`, `TaskList.folderId` | Not started |
 | 6 | Google Calendar integration | XL | **Yes**: synced calendar settings, `TaskSource.htmlLink` | Not started |
@@ -50,7 +50,7 @@ Files: `src/renderer/src/styles/global.css` and possibly `Sidebar.tsx`.
 - Results view: matching active tasks across **all lists**, each showing its list name as a small tag, with completed matches in a collapsed section. Clicking a result opens the existing `TaskDetailPanel`. The `AddTaskBar` is hidden in this view.
 - Header title: `Search: "query"`.
 
-## Phase 3: starring tasks (S–M)
+## Phase 3: starring tasks (S–M) — ✅ Done
 
 This is already partly built. The `starred` field exists, rows have a star button, and the detail panel has a "Mark important" toggle. What's missing:
 

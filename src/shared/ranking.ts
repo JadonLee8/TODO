@@ -6,6 +6,7 @@ import type { RankingSettings, Task } from './types'
  *  - P2/P3 tasks are interleaved by a blended age/priority score (see RankingSettings.midPriorityWeight).
  *  - P4 tasks always come before P5 tasks.
  *  - Within P1, P4, and P5, ties are broken by age (oldest first).
+ *  - With settings.starredFirst, starred tasks move to the top of their own tier (P1 still always comes first).
  */
 export function rankTasks(tasks: Task[], settings: RankingSettings, now: Date = new Date()): Task[] {
   const tier1 = tasks.filter((t) => t.priority === 1)
@@ -21,7 +22,19 @@ export function rankTasks(tasks: Task[], settings: RankingSettings, now: Date = 
 
   tier23.sort((a, b) => blendedScore(b, settings, now) - blendedScore(a, settings, now))
 
-  return [...tier1, ...tier23, ...tier4, ...tier5]
+  const tiers = [tier1, tier23, tier4, tier5]
+  return tiers.flatMap((tier) => (settings.starredFirst ? starredToTop(tier) : tier))
+}
+
+/** Orders active tasks for lists other than the main one: oldest first, optionally with starred tasks on top. */
+export function orderPlainList(tasks: Task[], settings: Pick<RankingSettings, 'starredFirst'>): Task[] {
+  const byCreated = [...tasks].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+  return settings.starredFirst ? starredToTop(byCreated) : byCreated
+}
+
+/** Stable partition: starred tasks first, each group keeping its existing order. */
+function starredToTop(tasks: Task[]): Task[] {
+  return [...tasks.filter((t) => t.starred), ...tasks.filter((t) => !t.starred)]
 }
 
 function ageDays(task: Task, now: Date): number {

@@ -1,14 +1,14 @@
 import { useState, type FormEvent } from 'react'
 import { useAppState } from '../state/AppStateContext'
 
-export function AddTaskBar({ listId }: { listId: string }) {
+export function AddTaskBar({ listId, starred = false }: { listId: string; starred?: boolean }) {
   const { addTask } = useAppState()
   const [title, setTitle] = useState('')
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!title.trim()) return
-    await addTask({ title, listId })
+    await addTask({ title, listId, starred })
     setTitle('')
   }
 
@@ -17,7 +17,7 @@ export function AddTaskBar({ listId }: { listId: string }) {
       <span className="add-task-plus">+</span>
       <input
         type="text"
-        placeholder="Add a task"
+        placeholder={starred ? 'Add an important task' : 'Add a task'}
         value={title}
         onChange={(e) => setTitle(e.target.value)}
       />

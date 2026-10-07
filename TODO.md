@@ -1,4 +1,4 @@
-- [ ] starring tasks
+- [x] starring tasks
 - [ ] list folders
 - [ ] g cal integration
 - [ ] chrome extension

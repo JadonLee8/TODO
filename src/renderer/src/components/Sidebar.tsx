@@ -9,7 +9,7 @@ export function Sidebar({
   onOpenSettings: () => void
   searchInputRef: RefObject<HTMLInputElement>
 }) {
-  const { lists, tasks, view, selectList, setSearchQuery, addList, deleteList } = useAppState()
+  const { lists, tasks, view, selectList, setView, setSearchQuery, addList, deleteList } = useAppState()
   const selectedListId = view.kind === 'list' ? view.listId : null
   const [newListName, setNewListName] = useState('')
 
@@ -21,6 +21,7 @@ export function Sidebar({
     }
     return map
   }, [tasks])
+  const importantCount = useMemo(() => tasks.filter((t) => t.starred && !t.completed && !t.archived).length, [tasks])
 
   const customLists = lists.filter((l) => l.id !== MAIN_LIST_ID).sort((a, b) => a.order - b.order)
 
@@ -61,6 +62,14 @@ export function Sidebar({
           Tasks
         </span>
         <span className="count">{counts.get(MAIN_LIST_ID) ?? 0}</span>
+      </button>
+
+      <button className={`nav-item${view.kind === 'important' ? ' active' : ''}`} onClick={() => setView({ kind: 'important' })}>
+        <span className="label">
+          <span className="nav-icon important-icon">&#9733;</span>
+          Important
+        </span>
+        <span className="count">{importantCount}</span>
       </button>
 
       <div className="sidebar-divider" />

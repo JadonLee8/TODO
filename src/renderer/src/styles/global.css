@@ -158,6 +158,10 @@ textarea {
   flex-shrink: 0;
 }
 
+.important-icon {
+  color: #e0883a;
+}
+
 .sidebar-section {
   display: flex;
   flex-direction: column;
@@ -601,6 +605,14 @@ textarea {
   color: var(--text-muted);
   font-size: 12px;
   margin: 0 0 12px;
+}
+
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  margin-bottom: 16px;
 }
 
 .status-line {

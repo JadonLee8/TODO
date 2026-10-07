@@ -38,6 +38,8 @@ export interface RankingSettings {
   midPriorityWeight: number
   /** Age (in days) at which the age factor saturates to its maximum, for ranking purposes. */
   ageNormalizationDays: number
+  /** When on, starred tasks sort to the top of their own priority tier (main list) or of the list (other lists). */
+  starredFirst: boolean
 }
 
 export interface ArchiveSettings {
@@ -54,7 +56,8 @@ export interface SyncedSettings {
 export const DEFAULT_SYNCED_SETTINGS: SyncedSettings = {
   ranking: {
     midPriorityWeight: 0.5,
-    ageNormalizationDays: 30
+    ageNormalizationDays: 30,
+    starredFirst: false
   },
   archive: {
     archiveAfterDays: 31

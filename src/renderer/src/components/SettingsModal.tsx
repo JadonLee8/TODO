@@ -14,6 +14,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
   const [midPriorityWeight, setMidPriorityWeight] = useState(syncedSettings.ranking.midPriorityWeight)
   const [ageNormalizationDays, setAgeNormalizationDays] = useState(syncedSettings.ranking.ageNormalizationDays)
   const [archiveAfterDays, setArchiveAfterDays] = useState(syncedSettings.archive.archiveAfterDays)
+  const [starredFirst, setStarredFirst] = useState(syncedSettings.ranking.starredFirst ?? false)
 
   async function commitRepoField(field: 'githubOwner' | 'githubRepo' | 'githubBranch', value: string) {
     await saveLocalSettings({
@@ -38,9 +39,10 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
     setTesting(false)
   }
 
-  async function commitRanking() {
+  async function commitRanking(overrides: { starredFirst?: boolean } = {}) {
     await saveSyncedSettings({
-      ranking: { midPriorityWeight, ageNormalizationDays },
+      ...syncedSettings,
+      ranking: { midPriorityWeight, ageNormalizationDays, starredFirst: overrides.starredFirst ?? starredFirst },
       archive: { archiveAfterDays }
     })
   }
@@ -137,6 +139,17 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
               onBlur={() => void commitRanking()}
             />
           </div>
+          <label className="checkbox-field">
+            <input
+              type="checkbox"
+              checked={starredFirst}
+              onChange={(e) => {
+                setStarredFirst(e.target.checked)
+                void commitRanking({ starredFirst: e.target.checked })
+              }}
+            />
+            Sort important (★) tasks to the top of their priority level, and of other lists
+          </label>
         </div>
 
         <div className="settings-section">

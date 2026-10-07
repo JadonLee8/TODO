@@ -34,6 +34,7 @@ export default function App() {
 
   let title: string
   if (view.kind === 'search') title = `Search: "${view.query}"`
+  else if (view.kind === 'important') title = 'Important'
   else if (view.listId === MAIN_LIST_ID) title = 'Tasks'
   else title = lists.find((l) => l.id === view.listId)?.name ?? 'Tasks'
 
