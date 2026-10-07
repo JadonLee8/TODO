@@ -3,6 +3,12 @@ import { join } from 'path'
 import { ensureCacheDirs } from './localCache'
 import { registerIpcHandlers } from './ipc'
 
+// Lets a second copy of the app run against its own cache (e.g. to test sync between two "devices").
+if (process.env['TODO_USER_DATA_DIR']) app.setPath('userData', process.env['TODO_USER_DATA_DIR'])
+// Chromium keeps its HTTP cache in <sessionData>/Cache, which on Windows' case-insensitive filesystem is the
+// same folder as our own <userData>/cache, and Chromium wipes it when it resets its cache. Keep them apart.
+app.setPath('sessionData', join(app.getPath('userData'), 'chromium'))
+
 function createWindow(): void {
   const win = new BrowserWindow({
     width: 1100,

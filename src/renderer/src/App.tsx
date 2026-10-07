@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Task } from '@shared/types'
 import { MAIN_LIST_ID } from '@shared/types'
 import { useAppState } from './state/AppStateContext'
@@ -9,21 +9,37 @@ import { ConflictModal } from './components/ConflictModal'
 import { SettingsModal } from './components/SettingsModal'
 
 export default function App() {
-  const { loading, tasks, lists, conflicts, selectedListId, syncing, lastSyncResult, runSync } = useAppState()
+  const { loading, tasks, lists, conflicts, view, syncing, lastSyncResult, runSync } = useAppState()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [openTaskId, setOpenTaskId] = useState<string | null>(null)
   const [openConflictTaskId, setOpenConflictTaskId] = useState<string | null>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  // Ctrl+F / Ctrl+K focus the sidebar search box.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.key === 'f' || e.key === 'k')) {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+        searchInputRef.current?.select()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   if (loading) {
     return <div className="empty-state">Loading…</div>
   }
 
-  const currentList = lists.find((l) => l.id === selectedListId)
-  const title = selectedListId === MAIN_LIST_ID ? 'Tasks' : currentList?.name ?? 'Tasks'
+  let title: string
+  if (view.kind === 'search') title = `Search: "${view.query}"`
+  else if (view.listId === MAIN_LIST_ID) title = 'Tasks'
+  else title = lists.find((l) => l.id === view.listId)?.name ?? 'Tasks'
 
   return (
     <div className="app-shell">
-      <Sidebar onOpenSettings={() => setSettingsOpen(true)} />
+      <Sidebar onOpenSettings={() => setSettingsOpen(true)} searchInputRef={searchInputRef} />
 
       <div className="main-content">
         <div className="content-header">
@@ -48,7 +64,7 @@ export default function App() {
         </div>
 
         <TaskListView
-          listId={selectedListId}
+          view={view}
           onOpenTask={(task: Task) => setOpenTaskId(task.id)}
           onOpenConflict={(taskId: string) => setOpenConflictTaskId(taskId)}
         />

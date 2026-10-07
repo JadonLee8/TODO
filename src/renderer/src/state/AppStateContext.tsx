@@ -1,9 +1,12 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { LocalSettings, Priority, SyncConflict, SyncResult, SyncedSettings, Task, TaskList } from '@shared/types'
 import { DEFAULT_LOCAL_SETTINGS, DEFAULT_SYNCED_SETTINGS, MAIN_LIST_ID } from '@shared/types'
 import type { TokenCheckResult } from '@shared/ipc'
 import { newId } from '@shared/id'
 import { taskIdsToArchive } from '@shared/archive'
+
+/** What the main pane is showing. */
+export type View = { kind: 'list'; listId: string } | { kind: 'search'; query: string }
 
 interface AppState {
   loading: boolean
@@ -11,12 +14,14 @@ interface AppState {
   lists: TaskList[]
   syncedSettings: SyncedSettings
   localSettings: LocalSettings
-  selectedListId: string
+  view: View
   conflicts: SyncConflict[]
   syncing: boolean
   lastSyncResult: SyncResult | null
 
   selectList: (id: string) => void
+  /** Switches to the search view; a blank query returns to the view that was showing before the search. */
+  setSearchQuery: (query: string) => void
   addTask: (input: { title: string; listId: string; priority?: Priority }) => Promise<void>
   updateTask: (task: Task) => Promise<void>
   toggleComplete: (task: Task) => Promise<void>
@@ -46,7 +51,8 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
   const [lists, setLists] = useState<TaskList[]>([])
   const [syncedSettings, setSyncedSettings] = useState<SyncedSettings>(DEFAULT_SYNCED_SETTINGS)
   const [localSettings, setLocalSettings] = useState<LocalSettings>(DEFAULT_LOCAL_SETTINGS)
-  const [selectedListId, setSelectedListId] = useState<string>(MAIN_LIST_ID)
+  const [view, setView] = useState<View>({ kind: 'list', listId: MAIN_LIST_ID })
+  const viewBeforeSearch = useRef<View>(view)
   const [conflicts, setConflicts] = useState<SyncConflict[]>([])
   const [syncing, setSyncing] = useState(false)
   const [lastSyncResult, setLastSyncResult] = useState<SyncResult | null>(null)
@@ -76,7 +82,15 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
     })()
   }, [])
 
-  const selectList = useCallback((id: string) => setSelectedListId(id), [])
+  const selectList = useCallback((id: string) => setView({ kind: 'list', listId: id }), [])
+
+  const setSearchQuery = useCallback((query: string) => {
+    setView((prev) => {
+      if (!query.trim()) return prev.kind === 'search' ? viewBeforeSearch.current : prev
+      if (prev.kind !== 'search') viewBeforeSearch.current = prev
+      return { kind: 'search', query }
+    })
+  }, [])
 
   const addTask = useCallback(async (input: { title: string; listId: string; priority?: Priority }) => {
     const now = new Date().toISOString()
@@ -163,10 +177,12 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
       for (const t of affected) {
         await updateTask({ ...t, listId: MAIN_LIST_ID })
       }
-      if (selectedListId === id) setSelectedListId(MAIN_LIST_ID)
+      const isDeleted = (v: View) => v.kind === 'list' && v.listId === id
+      setView((prev) => (isDeleted(prev) ? { kind: 'list', listId: MAIN_LIST_ID } : prev))
+      if (isDeleted(viewBeforeSearch.current)) viewBeforeSearch.current = { kind: 'list', listId: MAIN_LIST_ID }
       await saveLists(lists.filter((l) => l.id !== id))
     },
-    [lists, tasks, saveLists, updateTask, selectedListId]
+    [lists, tasks, saveLists, updateTask]
   )
 
   const saveSyncedSettings = useCallback(async (settings: SyncedSettings) => {
@@ -240,11 +256,12 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
       lists,
       syncedSettings,
       localSettings,
-      selectedListId,
+      view,
       conflicts,
       syncing,
       lastSyncResult,
       selectList,
+      setSearchQuery,
       addTask,
       updateTask,
       toggleComplete,
@@ -268,11 +285,12 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
       lists,
       syncedSettings,
       localSettings,
-      selectedListId,
+      view,
       conflicts,
       syncing,
       lastSyncResult,
       selectList,
+      setSearchQuery,
       addTask,
       updateTask,
       toggleComplete,

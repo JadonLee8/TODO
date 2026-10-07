@@ -1,9 +1,16 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useMemo, useState, type FormEvent, type RefObject } from 'react'
 import { MAIN_LIST_ID } from '@shared/types'
 import { useAppState } from '../state/AppStateContext'
 
-export function Sidebar({ onOpenSettings }: { onOpenSettings: () => void }) {
-  const { lists, tasks, selectedListId, selectList, addList, deleteList } = useAppState()
+export function Sidebar({
+  onOpenSettings,
+  searchInputRef
+}: {
+  onOpenSettings: () => void
+  searchInputRef: RefObject<HTMLInputElement>
+}) {
+  const { lists, tasks, view, selectList, setSearchQuery, addList, deleteList } = useAppState()
+  const selectedListId = view.kind === 'list' ? view.listId : null
   const [newListName, setNewListName] = useState('')
 
   const counts = useMemo(() => {
@@ -31,6 +38,23 @@ export function Sidebar({ onOpenSettings }: { onOpenSettings: () => void }) {
         TODO
       </div>
 
+      <div className="sidebar-search">
+        <span className="nav-icon">&#8981;</span>
+        <input
+          ref={searchInputRef}
+          type="search"
+          placeholder="Search (Ctrl+F)"
+          value={view.kind === 'search' ? view.query : ''}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setSearchQuery('')
+              e.currentTarget.blur()
+            }
+          }}
+        />
+      </div>
+
       <button className={`nav-item${selectedListId === MAIN_LIST_ID ? ' active' : ''}`} onClick={() => selectList(MAIN_LIST_ID)}>
         <span className="label">
           <span className="nav-icon">&#9679;</span>
@@ -47,7 +71,7 @@ export function Sidebar({ onOpenSettings }: { onOpenSettings: () => void }) {
             <button className={`nav-item${selectedListId === list.id ? ' active' : ''}`} onClick={() => selectList(list.id)}>
               <span className="label">
                 <span className="nav-icon">&#9776;</span>
-                {list.name}
+                <span className="label-text">{list.name}</span>
               </span>
               <span className="count">{counts.get(list.id) ?? 0}</span>
             </button>

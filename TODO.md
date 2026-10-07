@@ -1,0 +1,7 @@
+- [ ] starring tasks
+- [ ] list folders
+- [ ] g cal integration
+- [ ] chrome extension
+- [ ] drag and drop tasks between lists
+- [x] make the lists in the left side bar more dense
+- [x] add a search bar to the left bar on the top
