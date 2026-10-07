@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import type { Task } from '@shared/types'
 import { MAIN_LIST_ID } from '@shared/types'
 import { orderPlainList, rankTasks } from '@shared/ranking'
@@ -9,10 +9,17 @@ import { TaskRow } from './TaskRow'
 
 export function TaskListView({
   view,
+  title,
+  status,
+  actions,
   onOpenTask,
   onOpenConflict
 }: {
   view: View
+  title: string
+  /** A line under the summary, e.g. the last sync result. */
+  status?: ReactNode
+  actions?: ReactNode
   onOpenTask: (task: Task) => void
   onOpenConflict: (taskId: string) => void
 }) {
@@ -59,33 +66,56 @@ export function TaskListView({
     )
   }
 
+  const matches = ordered.length + completed.length
+  const summary =
+    view.kind === 'search'
+      ? `${matches} ${matches === 1 ? 'match' : 'matches'} for “${view.query.trim()}”`
+      : ordered.length
+        ? `${ordered.length} left`
+        : completed.length
+          ? 'All done'
+          : ''
+
   return (
-    <div className="task-scroll">
-      {view.kind === 'list' && <AddTaskBar listId={view.listId} />}
-      {/* Tasks added from Important go into the main Tasks list, already starred. */}
-      {view.kind === 'important' && <AddTaskBar listId={MAIN_LIST_ID} starred />}
-
-      {ordered.length === 0 && completed.length === 0 && (
-        <div className="empty-state">
-          {view.kind === 'search'
-            ? `No tasks match "${view.query}".`
-            : view.kind === 'important'
-              ? 'No important tasks. Star a task to see it here.'
-              : 'Nothing here yet. Add a task above.'}
+    <>
+      <header className="content-header">
+        <div className="header-text">
+          <h1>{title}</h1>
+          {summary && <p className="header-summary">{summary}</p>}
+          {status}
         </div>
-      )}
+        <div className="header-actions">{actions}</div>
+      </header>
 
-      {ordered.map(renderRow)}
+      <div className="task-scroll">
+        {view.kind === 'list' && <AddTaskBar listId={view.listId} />}
+        {/* Tasks added from Important go into the main Tasks list, already starred. */}
+        {view.kind === 'important' && <AddTaskBar listId={MAIN_LIST_ID} starred />}
 
-      {completed.length > 0 && (
-        <>
-          <div className="section-heading" onClick={() => setShowCompleted((v) => !v)}>
-            <span>{showCompleted ? '▾' : '▸'}</span>
-            Completed ({completed.length})
+        {ordered.length === 0 && completed.length === 0 && (
+          <div className="empty-state">
+            {view.kind === 'search'
+              ? 'Nothing matches. Search looks in task titles and notes.'
+              : view.kind === 'important'
+                ? 'Star a task with ☆ to keep it here.'
+                : 'Type a task above and press Enter.'}
           </div>
-          {showCompleted && completed.map(renderRow)}
-        </>
-      )}
-    </div>
+        )}
+
+        {ordered.map(renderRow)}
+
+        {completed.length > 0 && (
+          <>
+            <button className="section-heading" onClick={() => setShowCompleted((v) => !v)} aria-expanded={showCompleted}>
+              <svg className={`folder-chevron${showCompleted ? ' open' : ''}`} width="10" height="10" viewBox="0 0 10 10" aria-hidden>
+                <path d="M3.5 1.5 7 5l-3.5 3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Completed ({completed.length})
+            </button>
+            {showCompleted && completed.map(renderRow)}
+          </>
+        )}
+      </div>
+    </>
   )
 }

@@ -14,7 +14,7 @@ import { DEFAULT_LOCAL_SETTINGS, DEFAULT_SYNCED_SETTINGS, MAIN_LIST_ID } from '@
 import type { TokenCheckResult } from '@shared/ipc'
 import { newId } from '@shared/id'
 import { taskIdsToArchive } from '@shared/archive'
-import { nextOrderInFolder, nextTopLevelOrder } from '@shared/sidebarTree'
+import { nextOrderInFolder, nextTopLevelOrder, reorderSidebar, type DropPosition, type SidebarItem } from '@shared/sidebarTree'
 
 /** What the main pane is showing. */
 export type View = { kind: 'list'; listId: string } | { kind: 'important' } | { kind: 'search'; query: string }
@@ -55,6 +55,8 @@ interface AppState {
   deleteFolder: (id: string) => Promise<void>
   /** Moves a list into a folder, or to the top level with null. */
   moveListToFolder: (listId: string, folderId: string | null) => Promise<void>
+  /** Drag-and-drop reordering in the sidebar; a null target means the end of the top level. */
+  moveSidebarItem: (dragged: SidebarItem, target: SidebarItem | null, position: DropPosition) => Promise<void>
 
   saveSyncedSettings: (settings: SyncedSettings) => Promise<void>
   saveLocalSettings: (settings: Partial<EditableLocalSettings>) => Promise<void>
@@ -318,6 +320,16 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
     [lists, folders, saveLists]
   )
 
+  const moveSidebarItem = useCallback(
+    async (dragged: SidebarItem, target: SidebarItem | null, position: DropPosition) => {
+      const next = reorderSidebar(lists, folders, dragged, target, position)
+      if (!next) return
+      if (next.lists.some((l, i) => l !== lists[i])) await saveLists(next.lists)
+      if (next.folders.some((f, i) => f !== folders[i])) await saveFolders(next.folders)
+    },
+    [lists, folders, saveLists, saveFolders]
+  )
+
   const refreshFromCache = useCallback(async () => {
     const [nextTasks, nextLists, nextFolders, nextSettings, nextConflicts] = await Promise.all([
       window.api.tasks.getAll(),
@@ -388,6 +400,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
       renameFolder,
       deleteFolder,
       moveListToFolder,
+      moveSidebarItem,
       saveSyncedSettings,
       saveLocalSettings,
       saveToken,
@@ -427,6 +440,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
       renameFolder,
       deleteFolder,
       moveListToFolder,
+      moveSidebarItem,
       saveSyncedSettings,
       saveLocalSettings,
       saveToken,

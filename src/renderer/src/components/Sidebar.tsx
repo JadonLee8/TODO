@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode, type RefObject } from 'react'
+import { useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent, type ReactNode, type RefObject } from 'react'
 import type { TaskFolder, TaskList } from '@shared/types'
 import { MAIN_LIST_ID } from '@shared/types'
-import { buildSidebarTree } from '@shared/sidebarTree'
+import { buildSidebarTree, type DropPosition, type SidebarItem } from '@shared/sidebarTree'
 import { useAppState } from '../state/AppStateContext'
-import { LIST_MIME, TASK_MIME, dropTargetProps } from '../dnd'
+import { TASK_MIME, dropTargetProps, mergeDropProps, sortDropProps, startSortDrag, type SortKind } from '../dnd'
 
 /** Which folders are collapsed is a per-device preference, so it lives in localStorage rather than the repo. */
 const COLLAPSED_KEY = 'todo.collapsedFolders'
@@ -46,6 +46,7 @@ export function Sidebar({
     renameFolder,
     deleteFolder,
     moveListToFolder,
+    moveSidebarItem,
     moveTask,
     starTask
   } = useAppState()
@@ -68,11 +69,36 @@ export function Sidebar({
 
   const tree = useMemo(() => buildSidebarTree(lists, folders), [lists, folders])
 
-  // Which sidebar entry something is currently being dragged over: a list id, 'important', or 'folder:<id>'.
-  const [dropKey, setDropKey] = useState<string | null>(null)
-  const dropClass = (key: string) => (dropKey === key ? ' drop-target' : '')
-  const setActive = (key: string) => (active: boolean) => setDropKey((prev) => (active ? key : prev === key ? null : prev))
-  const taskDrop = (key: string, onDropId: (id: string) => void) => dropTargetProps(TASK_MIME, setActive(key), onDropId)
+  // The sidebar entry something is being dragged over (a list id, 'important', 'folder:<id>' or 'top-level')
+  // and where the drop would land relative to it.
+  const [drop, setDrop] = useState<{ key: string; position: DropPosition } | null>(null)
+  // The list or folder being dragged, so it doesn't show an insertion line next to itself.
+  const [dragging, setDragging] = useState<SidebarItem | null>(null)
+  const indicate = (key: string) => (position: DropPosition | null) =>
+    setDrop((prev) => {
+      if (!position) return prev?.key === key ? null : prev
+      return prev?.key === key && prev.position === position ? prev : { key, position }
+    })
+  const dropClass = (key: string) => (drop?.key === key && drop.position === 'inside' ? ' drop-target' : '')
+  const lineClass = (key: string, self: SidebarItem) => {
+    if (drop?.key !== key || drop.position === 'inside' || (dragging?.kind === self.kind && dragging.id === self.id)) return ''
+    return drop.position === 'before' ? ' drop-before' : ' drop-after'
+  }
+  const taskDrop = (key: string, onDropId: (id: string) => void) =>
+    dropTargetProps(TASK_MIME, (active) => indicate(key)(active ? 'inside' : null), onDropId)
+  const sortDrop = (key: string, target: SidebarItem | null, resolve: (kind: SortKind, y: number) => DropPosition | null) =>
+    sortDropProps(resolve, indicate(key), (kind, id, position) => void moveSidebarItem({ kind, id }, target, position))
+  const dragProps = (item: SidebarItem) => ({
+    draggable: true,
+    onDragStart: (e: DragEvent) => {
+      startSortDrag(e, item.kind, item.id)
+      setDragging(item)
+    },
+    onDragEnd: () => {
+      setDragging(null)
+      setDrop(null)
+    }
+  })
 
   useEffect(() => {
     if (!menu) return
@@ -104,14 +130,17 @@ export function Sidebar({
   }
 
   async function handleAddFolder() {
-    const id = await addFolder(newListName.trim() || 'New folder')
-    setNewListName('')
+    const id = await addFolder('New folder')
     if (id) setRenaming(id)
   }
 
   function renderList(list: TaskList, nested: boolean) {
+    const self: SidebarItem = { kind: 'list', id: list.id }
+    // Lists can be dropped above or below any list; folders only beside top-level lists (they can't nest).
+    const resolve = (kind: SortKind, y: number): DropPosition | null =>
+      kind === 'folder' && nested ? null : y < 0.5 ? 'before' : 'after'
     return (
-      <div key={list.id} className={`list-row${nested ? ' nested' : ''}`}>
+      <div key={list.id} className={`list-row${nested ? ' nested' : ''}${lineClass(list.id, self)}`}>
         {renaming === list.id ? (
           <RenameInput
             icon="☰"
@@ -131,12 +160,11 @@ export function Sidebar({
                 e.preventDefault()
                 setMenu({ x: e.clientX, y: e.clientY, list })
               }}
-              draggable
-              onDragStart={(e) => {
-                e.dataTransfer.setData(LIST_MIME, list.id)
-                e.dataTransfer.effectAllowed = 'move'
-              }}
-              {...taskDrop(list.id, (id) => void moveTask(id, list.id))}
+              {...dragProps(self)}
+              {...mergeDropProps(
+                taskDrop(list.id, (id) => void moveTask(id, list.id)),
+                sortDrop(list.id, self, resolve)
+              )}
             >
               <span className="label">
                 <span className="nav-icon">&#9776;</span>
@@ -164,12 +192,23 @@ export function Sidebar({
     const isCollapsed = collapsed.has(folder.id)
     const total = folderLists.reduce((sum, l) => sum + (counts.get(l.id) ?? 0), 0)
     const key = `folder:${folder.id}`
+    const self: SidebarItem = { kind: 'folder', id: folder.id }
+    // A list over the header goes into the folder, except near the top edge (above the folder) or, when there
+    // are no visible lists under it, near the bottom edge (below the folder).
+    const resolveHeader = (kind: SortKind, y: number): DropPosition | null => {
+      if (kind !== 'list') return null
+      if (y < 0.3) return 'before'
+      if ((isCollapsed || folderLists.length === 0) && y > 0.7) return 'after'
+      return 'inside'
+    }
+    // A folder dragged anywhere over this folder's block (header or lists) lands above or below the whole block.
+    const resolveBlock = (kind: SortKind, y: number): DropPosition | null => (kind === 'folder' ? (y < 0.5 ? 'before' : 'after') : null)
     return (
-      <div key={folder.id} className="folder">
+      <div key={folder.id} className={`folder${lineClass(key, self)}`} {...sortDrop(key, self, resolveBlock)}>
         <div className="list-row">
           {renaming === folder.id ? (
             <RenameInput
-              icon="📁"
+              icon={<FolderIcon />}
               initial={folder.name}
               onDone={(name) => {
                 setRenaming(null)
@@ -183,13 +222,16 @@ export function Sidebar({
                 onClick={() => toggleFolder(folder.id)}
                 onDoubleClick={() => setRenaming(folder.id)}
                 aria-expanded={!isCollapsed}
-                {...dropTargetProps(LIST_MIME, setActive(key), (id) => void moveListToFolder(id, folder.id))}
+                {...dragProps(self)}
+                {...sortDrop(key, self, resolveHeader)}
               >
                 <span className="label">
                   <svg className={`folder-chevron${isCollapsed ? '' : ' open'}`} width="10" height="10" viewBox="0 0 10 10" aria-hidden>
                     <path d="M3.5 1.5 7 5l-3.5 3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                  <span className="nav-icon">&#128193;</span>
+                  <span className="nav-icon">
+                    <FolderIcon />
+                  </span>
                   <span className="label-text">{folder.name}</span>
                 </span>
                 <span className="count">{total}</span>
@@ -216,10 +258,7 @@ export function Sidebar({
 
   return (
     <aside className="sidebar">
-      <div className="sidebar-title">
-        <span className="dot" />
-        TODO
-      </div>
+      <div className="sidebar-title">TODO</div>
 
       <div className="sidebar-search">
         <span className="nav-icon">&#8981;</span>
@@ -245,7 +284,7 @@ export function Sidebar({
       >
         <span className="label">
           <span className="nav-icon">&#9679;</span>
-          Tasks
+          <span className="label-text">Tasks</span>
         </span>
         <span className="count">{counts.get(MAIN_LIST_ID) ?? 0}</span>
       </button>
@@ -257,35 +296,37 @@ export function Sidebar({
         {...taskDrop('important', (id) => void starTask(id))}
       >
         <span className="label">
-          <span className="nav-icon important-icon">&#9733;</span>
-          Important
+          <span className="nav-icon">&#9733;</span>
+          <span className="label-text">Important</span>
         </span>
         <span className="count">{importantCount}</span>
       </button>
 
       <div className="sidebar-divider" />
 
-      {/* Dropping a list on empty space here (not on a folder) moves it out of its folder. */}
-      <div
-        className={`sidebar-section${dropClass('top-level')}`}
-        {...dropTargetProps(LIST_MIME, setActive('top-level'), (id) => void moveListToFolder(id, null))}
-      >
+      {/* Dropping a list or folder on empty space here moves it to the bottom, outside any folder. */}
+      <div className={`sidebar-section${dropClass('top-level')}`} {...sortDrop('top-level', null, () => 'inside')}>
         {tree.map((entry) => (entry.kind === 'folder' ? renderFolder(entry.folder, entry.lists) : renderList(entry.list, false)))}
       </div>
 
       <form className="new-list-row" onSubmit={handleAddList}>
         <span className="nav-icon">+</span>
         <input type="text" placeholder="New list" value={newListName} onChange={(e) => setNewListName(e.target.value)} />
-        <button type="button" className="new-folder-button" title="New folder" onClick={() => void handleAddFolder()}>
-          &#128193;+
-        </button>
       </form>
+      <button className="nav-item new-folder-row" onClick={() => void handleAddFolder()}>
+        <span className="label">
+          <span className="nav-icon">
+            <FolderIcon />
+          </span>
+          <span className="label-text">New folder</span>
+        </span>
+      </button>
 
       <div className="sidebar-footer">
         <button className="nav-item" onClick={onOpenSettings}>
           <span className="label">
             <span className="nav-icon">&#9881;</span>
-            Settings
+            <span className="label-text">Settings</span>
           </span>
         </button>
       </div>
@@ -298,7 +339,7 @@ export function Sidebar({
             .sort((a, b) => a.order - b.order)
             .map((f) => (
               <button key={f.id} disabled={menu.list.folderId === f.id} onClick={() => void moveListToFolder(menu.list.id, f.id)}>
-                &#128193; {f.name}
+                <FolderIcon /> {f.name}
               </button>
             ))}
           <button disabled={!menu.list.folderId || !folders.some((f) => f.id === menu.list.folderId)} onClick={() => void moveListToFolder(menu.list.id, null)}>
@@ -313,7 +354,7 @@ export function Sidebar({
 }
 
 /** Inline name editor: Enter or blur saves, Escape cancels (onDone(null)). */
-function RenameInput({ icon, initial, onDone }: { icon: string; initial: string; onDone: (name: string | null) => void }) {
+function RenameInput({ icon, initial, onDone }: { icon: ReactNode; initial: string; onDone: (name: string | null) => void }) {
   const [value, setValue] = useState(initial)
   const finished = useRef(false)
   const finish = (name: string | null) => {
@@ -345,5 +386,20 @@ function ContextMenu({ x, y, children }: { x: number; y: number; children: React
     <div className="context-menu" style={{ left: x, top: y }}>
       {children}
     </div>
+  )
+}
+
+/** Outline folder in the sidebar's ink, instead of the colored emoji. */
+function FolderIcon() {
+  return (
+    <svg className="folder-icon" width="15" height="13" viewBox="0 0 15 13" aria-hidden>
+      <path
+        d="M1.5 2.5a1 1 0 0 1 1-1h3.2l1.5 1.6h5.3a1 1 0 0 1 1 1v6.9a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinejoin="round"
+      />
+    </svg>
   )
 }

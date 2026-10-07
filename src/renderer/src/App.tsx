@@ -29,53 +29,57 @@ export default function App() {
   }, [])
 
   if (loading) {
-    return <div className="empty-state">Loading…</div>
+    return <div className="loading">Loading your tasks…</div>
   }
 
   let title: string
-  if (view.kind === 'search') title = `Search: "${view.query}"`
+  if (view.kind === 'search') title = 'Search'
   else if (view.kind === 'important') title = 'Important'
   else if (view.listId === MAIN_LIST_ID) title = 'Tasks'
   else title = lists.find((l) => l.id === view.listId)?.name ?? 'Tasks'
+
+  const syncStatus = lastSyncResult && (
+    <p className={`sync-meta${lastSyncResult.error ? ' error' : ''}`}>
+      {lastSyncResult.error
+        ? `Sync failed: ${lastSyncResult.error}`
+        : `Synced: ${lastSyncResult.pushed} pushed, ${lastSyncResult.pulled} pulled${
+            lastSyncResult.conflicts.length ? `, ${lastSyncResult.conflicts.length} conflict${lastSyncResult.conflicts.length === 1 ? '' : 's'}` : ''
+          }.`}
+      {lastSyncResult.calendarImport &&
+        (lastSyncResult.calendarImport.error
+          ? ` Calendar import failed: ${lastSyncResult.calendarImport.error}`
+          : lastSyncResult.calendarImport.imported
+            ? ` ${lastSyncResult.calendarImport.imported} imported from Google Calendar.`
+            : '')}
+    </p>
+  )
 
   return (
     <div className="app-shell">
       <Sidebar onOpenSettings={() => setSettingsOpen(true)} searchInputRef={searchInputRef} />
 
-      <div className="main-content">
-        <div className="content-header">
-          <div>
-            <h1>{title}</h1>
-            {lastSyncResult && (
-              <div className="sync-meta">
-                {lastSyncResult.error
-                  ? `Sync failed: ${lastSyncResult.error}`
-                  : `Synced — ${lastSyncResult.pushed} pushed, ${lastSyncResult.pulled} pulled${
-                      lastSyncResult.conflicts.length ? `, ${lastSyncResult.conflicts.length} conflict(s)` : ''
-                    }`}
-                {lastSyncResult.calendarImport &&
-                  (lastSyncResult.calendarImport.error
-                    ? ` · Calendar import failed: ${lastSyncResult.calendarImport.error}`
-                    : lastSyncResult.calendarImport.imported
-                      ? ` · ${lastSyncResult.calendarImport.imported} imported from Google Calendar`
-                      : '')}
-              </div>
-            )}
-          </div>
-          <div className="header-actions">
-            {conflicts.length > 0 && <span className="sync-meta">⚠ {conflicts.length} unresolved conflict(s)</span>}
-            <button className="sync-button" onClick={() => void runSync()} disabled={syncing}>
-              {syncing ? 'Syncing…' : '⇅ Sync'}
-            </button>
-          </div>
-        </div>
-
+      <main className="main-content">
         <TaskListView
           view={view}
+          title={title}
+          status={syncStatus}
+          actions={
+            <>
+              {conflicts.length > 0 && (
+                <span className="conflict-count">
+                  {conflicts.length} unresolved conflict{conflicts.length === 1 ? '' : 's'}
+                </span>
+              )}
+              <button className="sync-button" onClick={() => void runSync()} disabled={syncing}>
+                <span aria-hidden>⇅</span>
+                {syncing ? 'Syncing…' : 'Sync'}
+              </button>
+            </>
+          }
           onOpenTask={(task: Task) => setOpenTaskId(task.id)}
           onOpenConflict={(taskId: string) => setOpenConflictTaskId(taskId)}
         />
-      </div>
+      </main>
 
       {openTaskId &&
         (() => {
