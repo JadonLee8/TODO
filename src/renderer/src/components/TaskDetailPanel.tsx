@@ -61,6 +61,18 @@ export function TaskDetailPanel({ task, onClose }: { task: Task; onClose: () => 
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} onBlur={commitNotes} />
         </div>
 
+        {task.source?.type === 'google_calendar' && (
+          <div className="source-line">
+            📅 Imported from Google Calendar
+            {/* Opened in the system browser by the main window's open handler. */}
+            {task.source.htmlLink && (
+              <a href={task.source.htmlLink} target="_blank" rel="noreferrer">
+                Open in Google Calendar
+              </a>
+            )}
+          </div>
+        )}
+
         <div className="button-row">
           <button className="btn" onClick={() => void toggleComplete(task)}>
             {task.completed ? 'Mark not complete' : 'Mark complete'}

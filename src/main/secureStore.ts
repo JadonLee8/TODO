@@ -1,51 +1,65 @@
 import { app, safeStorage } from 'electron'
 import { existsSync, readFileSync, writeFileSync, rmSync } from 'fs'
 import { join } from 'path'
-import type { LocalSettings } from '@shared/types'
+import type { EditableLocalSettings, LocalSettings } from '@shared/types'
 import { DEFAULT_LOCAL_SETTINGS } from '@shared/types'
 
 /**
- * The GitHub PAT is encrypted at rest with Electron's `safeStorage`, which on Windows
- * delegates to DPAPI (tied to the current OS user account). The decrypted token only ever
- * lives in this process's memory, and is never sent to the renderer.
+ * Secrets (the GitHub PAT, Google OAuth client secret and refresh token) are encrypted at rest with
+ * Electron's `safeStorage`, which on Windows delegates to DPAPI (tied to the current OS user account).
+ * Decrypted values only ever live in this process's memory and are never sent to the renderer.
  */
 
-function tokenPath(): string {
-  return join(app.getPath('userData'), 'github-token.enc')
+export type SecretName = 'github-token' | 'google-client-secret' | 'google-refresh-token'
+
+function secretPath(name: SecretName): string {
+  return join(app.getPath('userData'), `${name}.enc`)
 }
 
 function localSettingsPath(): string {
   return join(app.getPath('userData'), 'local-settings.json')
 }
 
-export function hasStoredToken(): boolean {
-  return existsSync(tokenPath())
+export function hasSecret(name: SecretName): boolean {
+  return existsSync(secretPath(name))
 }
 
-export function saveToken(token: string): void {
+export function saveSecret(name: SecretName, value: string): void {
   if (!safeStorage.isEncryptionAvailable()) {
     throw new Error('OS-level secure storage is not available on this machine')
   }
-  const encrypted = safeStorage.encryptString(token)
-  writeFileSync(tokenPath(), encrypted)
+  writeFileSync(secretPath(name), safeStorage.encryptString(value))
 }
 
-export function loadToken(): string | null {
-  if (!existsSync(tokenPath())) return null
-  const encrypted = readFileSync(tokenPath())
-  return safeStorage.decryptString(encrypted)
+export function loadSecret(name: SecretName): string | null {
+  if (!existsSync(secretPath(name))) return null
+  return safeStorage.decryptString(readFileSync(secretPath(name)))
 }
 
-export function clearToken(): void {
-  if (existsSync(tokenPath())) rmSync(tokenPath())
+export function clearSecret(name: SecretName): void {
+  if (existsSync(secretPath(name))) rmSync(secretPath(name))
+}
+
+export const saveToken = (token: string): void => saveSecret('github-token', token)
+export const loadToken = (): string | null => loadSecret('github-token')
+export const clearToken = (): void => clearSecret('github-token')
+
+function loadRawLocalSettings(): Partial<EditableLocalSettings> {
+  return existsSync(localSettingsPath()) ? (JSON.parse(readFileSync(localSettingsPath(), 'utf8')) as Partial<EditableLocalSettings>) : {}
 }
 
 export function loadLocalSettings(): LocalSettings {
-  if (!existsSync(localSettingsPath())) return { ...DEFAULT_LOCAL_SETTINGS, hasToken: hasStoredToken() }
-  const raw = JSON.parse(readFileSync(localSettingsPath(), 'utf8')) as Partial<LocalSettings>
-  return { ...DEFAULT_LOCAL_SETTINGS, ...raw, hasToken: hasStoredToken() }
+  const raw = loadRawLocalSettings()
+  return {
+    ...DEFAULT_LOCAL_SETTINGS,
+    ...raw,
+    hasToken: hasSecret('github-token'),
+    hasGoogleClientSecret: hasSecret('google-client-secret'),
+    googleConnected: hasSecret('google-refresh-token')
+  }
 }
 
-export function saveLocalSettings(settings: Omit<LocalSettings, 'hasToken'>): void {
-  writeFileSync(localSettingsPath(), JSON.stringify(settings, null, 2))
+/** Merges the given fields into the stored local settings. */
+export function saveLocalSettings(settings: Partial<EditableLocalSettings>): void {
+  writeFileSync(localSettingsPath(), JSON.stringify({ ...loadRawLocalSettings(), ...settings }, null, 2))
 }

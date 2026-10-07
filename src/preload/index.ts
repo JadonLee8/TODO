@@ -30,6 +30,14 @@ const api: Api = {
     getPendingConflicts: () => ipcRenderer.invoke(CHANNELS.syncGetPendingConflicts),
     resolveKeepLocal: (taskId) => ipcRenderer.invoke(CHANNELS.syncResolveKeepLocal, taskId),
     resolveKeepRemote: (taskId) => ipcRenderer.invoke(CHANNELS.syncResolveKeepRemote, taskId)
+  },
+  calendar: {
+    saveClientSecret: (secret) => ipcRenderer.invoke(CHANNELS.calendarSaveClientSecret, secret),
+    connect: () => ipcRenderer.invoke(CHANNELS.calendarConnect),
+    disconnect: () => ipcRenderer.invoke(CHANNELS.calendarDisconnect),
+    listCalendars: () => ipcRenderer.invoke(CHANNELS.calendarListCalendars),
+    importNow: () => ipcRenderer.invoke(CHANNELS.calendarImportNow),
+    getLastImport: () => ipcRenderer.invoke(CHANNELS.calendarGetLastImport)
   }
 }
 

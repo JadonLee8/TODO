@@ -53,6 +53,12 @@ export default function App() {
                   : `Synced — ${lastSyncResult.pushed} pushed, ${lastSyncResult.pulled} pulled${
                       lastSyncResult.conflicts.length ? `, ${lastSyncResult.conflicts.length} conflict(s)` : ''
                     }`}
+                {lastSyncResult.calendarImport &&
+                  (lastSyncResult.calendarImport.error
+                    ? ` · Calendar import failed: ${lastSyncResult.calendarImport.error}`
+                    : lastSyncResult.calendarImport.imported
+                      ? ` · ${lastSyncResult.calendarImport.imported} imported from Google Calendar`
+                      : '')}
               </div>
             )}
           </div>

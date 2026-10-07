@@ -25,6 +25,8 @@ export interface TaskSource {
   type: 'google_calendar'
   calendarId: string
   eventId: string
+  /** Link to the event in Google Calendar's web UI. */
+  htmlLink?: string
 }
 
 export interface TaskList {
@@ -58,10 +60,24 @@ export interface ArchiveSettings {
   archiveAfterDays: number
 }
 
+/** What to import from Google Calendar. Synced, so every connected device imports the same way. */
+export interface CalendarSettings {
+  /** Calendars to import events from. Empty = import nothing. */
+  calendarIds: string[]
+  /** List that imported tasks are created in. */
+  targetListId: string
+  /** How many days ahead (from the start of today) to import events. */
+  daysAhead: number
+  defaultPriority: Priority
+  /** Bump an imported task to P1 once its due date has passed (once per task). */
+  promoteOverdue: boolean
+}
+
 /** Synced settings — not secret, stored in the GitHub repo alongside tasks. */
 export interface SyncedSettings {
   ranking: RankingSettings
   archive: ArchiveSettings
+  calendar: CalendarSettings
 }
 
 export const DEFAULT_SYNCED_SETTINGS: SyncedSettings = {
@@ -72,6 +88,13 @@ export const DEFAULT_SYNCED_SETTINGS: SyncedSettings = {
   },
   archive: {
     archiveAfterDays: 31
+  },
+  calendar: {
+    calendarIds: [],
+    targetListId: MAIN_LIST_ID,
+    daysAhead: 7,
+    defaultPriority: 3,
+    promoteOverdue: true
   }
 }
 
@@ -82,13 +105,41 @@ export interface LocalSettings {
   githubBranch: string
   /** Whether a GitHub PAT has been saved (the PAT value itself is never exposed to the renderer). */
   hasToken: boolean
+  /** OAuth client ID of the user's own Google Cloud "Desktop app" client. */
+  googleClientId: string
+  /** Whether the Google client secret has been saved (encrypted; never exposed to the renderer). */
+  hasGoogleClientSecret: boolean
+  /** Whether this device holds a Google refresh token, i.e. is connected and runs calendar imports. */
+  googleConnected: boolean
 }
+
+/** The local settings the renderer can write; the rest are derived from what's stored securely. */
+export type EditableLocalSettings = Omit<LocalSettings, 'hasToken' | 'hasGoogleClientSecret' | 'googleConnected'>
 
 export const DEFAULT_LOCAL_SETTINGS: LocalSettings = {
   githubOwner: '',
   githubRepo: '',
   githubBranch: 'main',
-  hasToken: false
+  hasToken: false,
+  googleClientId: '',
+  hasGoogleClientSecret: false,
+  googleConnected: false
+}
+
+export interface GoogleCalendarInfo {
+  id: string
+  summary: string
+  primary: boolean
+  backgroundColor?: string
+}
+
+export interface CalendarImportResult {
+  /** When the import ran (ISO 8601). */
+  at: string
+  imported: number
+  /** Imported tasks bumped to P1 because they became overdue. */
+  promoted: number
+  error: string | null
 }
 
 export type SyncStatus = 'idle' | 'syncing' | 'error'
@@ -108,4 +159,6 @@ export interface SyncResult {
   pulled: number
   conflicts: SyncConflict[]
   error: string | null
+  /** Set when a Google Calendar import ran as part of this sync. */
+  calendarImport?: CalendarImportResult
 }

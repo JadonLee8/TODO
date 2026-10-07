@@ -1,8 +1,10 @@
 import { ipcMain } from 'electron'
-import type { LocalSettings, SyncedSettings, SyncConflict, Task, TaskFolder, TaskList } from '@shared/types'
-import { CHANNELS, type TokenCheckResult } from '@shared/ipc'
+import type { EditableLocalSettings, SyncedSettings, SyncConflict, SyncResult, Task, TaskFolder, TaskList } from '@shared/types'
+import { CHANNELS, type Outcome, type TokenCheckResult } from '@shared/ipc'
 import * as cache from './localCache'
 import * as secureStore from './secureStore'
+import * as googleAuth from './googleAuth'
+import { calendarImportEnabled, getLastImport, listCalendars, runCalendarImport } from './calendarImport'
 import { verifyRepoAccess, verifyToken as verifyGithubToken } from './github'
 import { syncNow } from './sync'
 
@@ -35,7 +37,7 @@ export function registerIpcHandlers(): void {
     cache.markSettingsDirty()
   })
   ipcMain.handle(CHANNELS.settingsGetLocal, () => secureStore.loadLocalSettings())
-  ipcMain.handle(CHANNELS.settingsSaveLocal, (_e, settings: Omit<LocalSettings, 'hasToken'>) => {
+  ipcMain.handle(CHANNELS.settingsSaveLocal, (_e, settings: Partial<EditableLocalSettings>) => {
     secureStore.saveLocalSettings(settings)
   })
   ipcMain.handle(CHANNELS.settingsSaveToken, (_e, token: string) => {
@@ -59,14 +61,37 @@ export function registerIpcHandlers(): void {
     }
   })
 
-  ipcMain.handle(CHANNELS.syncRun, async () => {
+  // Sync = pull/push, then (on a device connected to Google) import calendar events, then push again if the import
+  // changed anything. Pulling first means an event another device already imported is in the cache, not duplicated.
+  ipcMain.handle(CHANNELS.syncRun, async (): Promise<SyncResult> => {
     const token = secureStore.loadToken()
     const local = secureStore.loadLocalSettings()
-    if (!token) return { pushed: 0, pulled: 0, conflicts: [], error: 'No GitHub token saved. Add one in Settings.' }
-    if (!local.githubOwner || !local.githubRepo) {
-      return { pushed: 0, pulled: 0, conflicts: [], error: 'No GitHub repo configured. Set one in Settings.' }
+    const githubError = !token
+      ? 'No GitHub token saved. Add one in Settings.'
+      : !local.githubOwner || !local.githubRepo
+        ? 'No GitHub repo configured. Set one in Settings.'
+        : null
+    const importEnabled = calendarImportEnabled()
+
+    if (githubError || !token) {
+      // Without GitHub the calendar import can still fill the local task list.
+      const calendarImport = importEnabled ? await runCalendarImport() : undefined
+      return { pushed: 0, pulled: 0, conflicts: [], error: githubError, calendarImport }
     }
-    return syncNow(token, local.githubOwner, local.githubRepo, local.githubBranch || 'main')
+
+    const sync = () => syncNow(token, local.githubOwner, local.githubRepo, local.githubBranch || 'main')
+    const first = await sync()
+    if (first.error || !importEnabled) return first
+    const calendarImport = await runCalendarImport()
+    if (calendarImport.imported + calendarImport.promoted === 0) return { ...first, calendarImport }
+    const second = await sync()
+    return {
+      pushed: first.pushed + second.pushed,
+      pulled: first.pulled + second.pulled,
+      conflicts: [...first.conflicts, ...second.conflicts],
+      error: second.error,
+      calendarImport
+    }
   })
 
   ipcMain.handle(CHANNELS.syncGetPendingConflicts, (): SyncConflict[] => {
@@ -90,4 +115,21 @@ export function registerIpcHandlers(): void {
     if (remote) cache.acceptRemoteTask(remote)
     cache.clearTaskConflict(taskId)
   })
+
+  ipcMain.handle(CHANNELS.calendarSaveClientSecret, (_e, secret: string) => {
+    secureStore.saveSecret('google-client-secret', secret)
+  })
+  ipcMain.handle(CHANNELS.calendarConnect, () => outcome(googleAuth.connect()))
+  ipcMain.handle(CHANNELS.calendarDisconnect, () => googleAuth.disconnect())
+  ipcMain.handle(CHANNELS.calendarListCalendars, () => outcome(listCalendars()))
+  ipcMain.handle(CHANNELS.calendarImportNow, () => runCalendarImport())
+  ipcMain.handle(CHANNELS.calendarGetLastImport, () => getLastImport())
+}
+
+async function outcome<T>(promise: Promise<T>): Promise<Outcome<T>> {
+  try {
+    return { ok: true, value: await promise }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) }
+  }
 }

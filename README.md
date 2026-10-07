@@ -34,9 +34,9 @@ Plain JSON, one task per file, is deliberately chosen for portability: any langu
 data/
   lists.json          # [{ id, name, order, folderId }]
   folders.json        # [{ id, name, order }] (sidebar folders, one level deep)
-  settings.json        # ranking + archive settings (not secret, synced)
+  settings.json        # ranking, archive and calendar-import settings (not secret, synced)
   tasks/
-    <uuid>.json        # one Task per file
+    <uuid>.json        # one Task per file (calendar imports use a UUID derived from the event)
 ```
 
 `lists.json`, `folders.json` and `settings.json` are each a single shared file, and the last device to sync wins. If two devices both reorganize lists or folders before syncing, one device's changes are lost (tasks themselves are never affected). A list whose folder was deleted on another device just shows up at the top level.
@@ -52,11 +52,20 @@ npm run build       # type-check + production build (out/)
 npm run dist        # build + package a portable Windows .exe (dist/)
 ```
 
+## Google Calendar import
+
+On a device you connect, every **Sync** pulls, imports new events from the calendars you picked (today through *N* days ahead) as tasks, and pushes again. Each event is imported once: editing or deleting the task never brings it back, and later changes to the event (new time, cancellation) aren't carried over. Imported tasks get a 📅 marker and an "Open in Google Calendar" link, and can optionally be bumped to P1 once they're overdue.
+
+Setup (you need your own OAuth client; the app doesn't ship one):
+
+1. In the [Google Cloud console](https://console.cloud.google.com/), create a project and enable the **Google Calendar API**.
+2. Configure the **OAuth consent screen**: user type External, and add yourself as a test user.
+3. Create credentials → **OAuth client ID** → application type **Desktop app**. Copy the client ID and secret.
+4. ⚠️ While the consent screen is in **Testing** status, Google expires refresh tokens after **7 days** and you'd have to reconnect weekly. Switch it to **In production** to avoid that; without verification you'll see an "unverified app" warning when connecting, which is fine for personal use.
+5. In the app: **Settings → Google Calendar**, paste the client ID and secret, click **Connect**, and finish signing in in your browser. Then pick calendars, the target list, how many days ahead, and the priority for imported tasks.
+
+The client secret and refresh token are encrypted with `safeStorage` like the GitHub token. The selected calendars and import options are synced, but only devices you connect run the import. Access is read-only (`calendar.readonly`).
+
 ## Not yet implemented
 
-These are stubbed in Settings but require you to register OAuth credentials I can't create on your behalf:
-
-- **Microsoft To Do import** — needs an Azure AD app registration for Microsoft Graph.
-- **Google Calendar integration** — needs a Google Cloud OAuth client (Desktop app type): pick calendars, auto-import events as tasks within a date range, and auto-promote overdue ones to P1.
-
-Once you have those credentials, they can be wired in as a follow-up.
+- **Microsoft To Do import** — stubbed in Settings; needs an Azure AD app registration for Microsoft Graph.

@@ -154,7 +154,13 @@ export function setSyncedFolders(folders: TaskFolder[]): void {
 // ---- Settings ----
 
 export function getSettings(): SyncedSettings {
-  return readJson<SyncedSettings>(settingsPath(), DEFAULT_SYNCED_SETTINGS)
+  const stored = readJson<Partial<SyncedSettings>>(settingsPath(), {})
+  // Settings files written before a section existed (e.g. `calendar`) get that section's defaults.
+  return {
+    ranking: { ...DEFAULT_SYNCED_SETTINGS.ranking, ...stored.ranking },
+    archive: { ...DEFAULT_SYNCED_SETTINGS.archive, ...stored.archive },
+    calendar: { ...DEFAULT_SYNCED_SETTINGS.calendar, ...stored.calendar }
+  }
 }
 export function writeSettingsLocal(settings: SyncedSettings): void {
   writeJson(settingsPath(), settings)

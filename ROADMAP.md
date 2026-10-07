@@ -9,7 +9,7 @@ Plan for everything in `TODO.md`. The items are ordered so that each phase build
 | 3 | Starring tasks (finish it) | S–M | Maybe (one optional synced setting) | ✅ Done |
 | 4 | Drag and drop tasks between lists | M | No | ✅ Done |
 | 5 | List folders | L | **Yes**: new `data/folders.json`, `TaskList.folderId` | ✅ Done |
-| 6 | Google Calendar integration | XL | **Yes**: synced calendar settings, `TaskSource.htmlLink` | Not started |
+| 6 | Google Calendar integration | XL | **Yes**: synced calendar settings, `TaskSource.htmlLink` | 🚧 In progress |
 | 7 | Chrome extension | L | No (writes the existing task format) | Not started |
 
 Every format change is **additive and optional**. Missing fields get default values when they're read, so older copies of the app on other devices keep working.
@@ -97,7 +97,9 @@ Folders go in a new synced file, `data/folders.json`, rather than being packed i
 
 **Risk:** folders and drag-and-drop mean `lists.json` gets edited much more often. It's last-writer-wins, so if two devices both reorganize lists before syncing, one device's changes are lost. That's acceptable for now. Note it in the README.
 
-## Phase 6: Google Calendar integration (XL)
+## Phase 6: Google Calendar integration (XL) — 🚧 In progress
+
+> **Status:** implemented and tested end to end against a local mock of Google's OAuth and Calendar endpoints (consent with PKCE, token exchange, calendar list, paged events, once-only import, overdue → P1, import on Sync, disconnect/revoke). **Left to do:** connect with a real OAuth client (prerequisites below; setup steps are in the README) and confirm an import from a real calendar. Mark it done once that works.
 
 **Prerequisites (you have to do these; I can't):**
 1. Create a Google Cloud project and enable the **Google Calendar API**.

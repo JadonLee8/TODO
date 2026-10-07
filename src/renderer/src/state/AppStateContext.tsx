@@ -1,5 +1,15 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import type { LocalSettings, Priority, SyncConflict, SyncResult, SyncedSettings, Task, TaskFolder, TaskList } from '@shared/types'
+import type {
+  EditableLocalSettings,
+  LocalSettings,
+  Priority,
+  SyncConflict,
+  SyncResult,
+  SyncedSettings,
+  Task,
+  TaskFolder,
+  TaskList
+} from '@shared/types'
 import { DEFAULT_LOCAL_SETTINGS, DEFAULT_SYNCED_SETTINGS, MAIN_LIST_ID } from '@shared/types'
 import type { TokenCheckResult } from '@shared/ipc'
 import { newId } from '@shared/id'
@@ -47,10 +57,12 @@ interface AppState {
   moveListToFolder: (listId: string, folderId: string | null) => Promise<void>
 
   saveSyncedSettings: (settings: SyncedSettings) => Promise<void>
-  saveLocalSettings: (settings: Omit<LocalSettings, 'hasToken'>) => Promise<void>
+  saveLocalSettings: (settings: Partial<EditableLocalSettings>) => Promise<void>
   saveToken: (token: string) => Promise<void>
   clearToken: () => Promise<void>
   verifyToken: () => Promise<TokenCheckResult>
+  refreshLocalSettings: () => Promise<void>
+  reloadTasks: () => Promise<void>
 
   runSync: () => Promise<void>
   resolveConflictKeepLocal: (taskId: string) => Promise<void>
@@ -226,7 +238,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
   }, [])
 
   const saveLocalSettings = useCallback(
-    async (settings: Omit<LocalSettings, 'hasToken'>) => {
+    async (settings: Partial<EditableLocalSettings>) => {
       setLocalSettings((prev) => ({ ...prev, ...settings }))
       await window.api.settings.saveLocal(settings)
     },
@@ -244,6 +256,16 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
   }, [])
 
   const verifyToken = useCallback(() => window.api.settings.verifyToken(), [])
+
+  /** Re-reads local settings from the main process (e.g. after connecting to Google). */
+  const refreshLocalSettings = useCallback(async () => {
+    setLocalSettings(await window.api.settings.getLocal())
+  }, [])
+
+  /** Reloads tasks after something in the main process wrote them (e.g. a calendar import). */
+  const reloadTasks = useCallback(async () => {
+    setTasks(await window.api.tasks.getAll())
+  }, [])
 
   const saveFolders = useCallback(async (next: TaskFolder[]) => {
     setFolders(next)
@@ -371,6 +393,8 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
       saveToken,
       clearToken,
       verifyToken,
+      refreshLocalSettings,
+      reloadTasks,
       runSync,
       resolveConflictKeepLocal,
       resolveConflictKeepRemote
@@ -408,6 +432,8 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
       saveToken,
       clearToken,
       verifyToken,
+      refreshLocalSettings,
+      reloadTasks,
       runSync,
       resolveConflictKeepLocal,
       resolveConflictKeepRemote

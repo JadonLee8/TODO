@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAppState } from '../state/AppStateContext'
+import { CalendarSettingsSection } from './CalendarSettingsSection'
 
 export function SettingsModal({ onClose }: { onClose: () => void }) {
   const { localSettings, saveLocalSettings, saveToken, clearToken, verifyToken, syncedSettings, saveSyncedSettings } = useAppState()
@@ -173,15 +174,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
           <p className="hint">Requires registering an Azure AD app for Microsoft Graph access. Not yet configured.</p>
         </div>
 
-        <div className="settings-section">
-          <h3>
-            Google Calendar integration <span className="badge-coming-soon">Coming soon</span>
-          </h3>
-          <p className="hint">
-            Requires a Google Cloud OAuth client (Desktop app type). Once you provide a client ID and secret, this will let you pick
-            specific calendars and auto-import events as tasks within a date range, promoting overdue ones to P1.
-          </p>
-        </div>
+        <CalendarSettingsSection />
       </div>
     </div>
   )

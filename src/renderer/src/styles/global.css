@@ -713,6 +713,44 @@ textarea {
   margin: 0 0 12px;
 }
 
+.calendar-options {
+  margin-top: 16px;
+}
+
+.calendar-list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Beats `.field label`, which would otherwise make these block-level muted labels. */
+.calendar-list .checkbox-field {
+  display: flex;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text);
+}
+
+.calendar-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.source-line {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.source-line a {
+  color: var(--accent);
+}
+
 .checkbox-field {
   display: flex;
   align-items: center;

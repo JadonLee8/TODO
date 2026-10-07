@@ -47,7 +47,13 @@ export function TaskRow({
       {listName && <span className="list-tag">{listName}</span>}
 
       {conflicted && <span className="conflict-badge">SYNC CONFLICT</span>}
-      {task.dueDate && !conflicted && <span className="task-meta">{new Date(task.dueDate).toLocaleDateString()}</span>}
+      {task.source?.type === 'google_calendar' && (
+        <span className="task-meta" title="Imported from Google Calendar">
+          📅
+        </span>
+      )}
+      {/* Due dates are stored as midnight UTC of the due day, so format in UTC to show that day everywhere. */}
+      {task.dueDate && !conflicted && <span className="task-meta">{new Date(task.dueDate).toLocaleDateString(undefined, { timeZone: 'UTC' })}</span>}
 
       <button
         className={`star-button${task.starred ? ' starred' : ''}`}

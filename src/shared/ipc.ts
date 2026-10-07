@@ -1,4 +1,15 @@
-import type { LocalSettings, SyncConflict, SyncResult, SyncedSettings, Task, TaskFolder, TaskList } from './types'
+import type {
+  CalendarImportResult,
+  EditableLocalSettings,
+  GoogleCalendarInfo,
+  LocalSettings,
+  SyncConflict,
+  SyncResult,
+  SyncedSettings,
+  Task,
+  TaskFolder,
+  TaskList
+} from './types'
 
 /** Channel names shared between preload (sender) and main (handler) to avoid typos. */
 export const CHANNELS = {
@@ -19,8 +30,17 @@ export const CHANNELS = {
   syncRun: 'sync:run',
   syncGetPendingConflicts: 'sync:getPendingConflicts',
   syncResolveKeepLocal: 'sync:resolveKeepLocal',
-  syncResolveKeepRemote: 'sync:resolveKeepRemote'
+  syncResolveKeepRemote: 'sync:resolveKeepRemote',
+  calendarSaveClientSecret: 'calendar:saveClientSecret',
+  calendarConnect: 'calendar:connect',
+  calendarDisconnect: 'calendar:disconnect',
+  calendarListCalendars: 'calendar:listCalendars',
+  calendarImportNow: 'calendar:importNow',
+  calendarGetLastImport: 'calendar:getLastImport'
 } as const
+
+/** Result of an operation that can fail with a message for the user (errors don't cross IPC cleanly). */
+export type Outcome<T = undefined> = { ok: true; value: T } | { ok: false; error: string }
 
 export interface TokenCheckResult {
   ok: boolean
@@ -47,7 +67,7 @@ export interface Api {
     getSynced(): Promise<SyncedSettings>
     saveSynced(settings: SyncedSettings): Promise<void>
     getLocal(): Promise<LocalSettings>
-    saveLocal(settings: Omit<LocalSettings, 'hasToken'>): Promise<void>
+    saveLocal(settings: Partial<EditableLocalSettings>): Promise<void>
     saveToken(token: string): Promise<void>
     clearToken(): Promise<void>
     verifyToken(): Promise<TokenCheckResult>
@@ -57,5 +77,14 @@ export interface Api {
     getPendingConflicts(): Promise<SyncConflict[]>
     resolveKeepLocal(taskId: string): Promise<void>
     resolveKeepRemote(taskId: string): Promise<void>
+  }
+  calendar: {
+    saveClientSecret(secret: string): Promise<void>
+    /** Opens Google's consent page in the browser and waits for the redirect. */
+    connect(): Promise<Outcome>
+    disconnect(): Promise<void>
+    listCalendars(): Promise<Outcome<GoogleCalendarInfo[]>>
+    importNow(): Promise<CalendarImportResult>
+    getLastImport(): Promise<CalendarImportResult | null>
   }
 }
