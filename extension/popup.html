@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Add to TODO</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body class="popup">
+    <form id="form">
+      <div class="header">
+        <span class="dot"></span>
+        Add to TODO
+        <a id="options-link" href="#" title="Settings">&#9881;</a>
+      </div>
+
+      <div id="setup" class="notice" hidden>
+        Set up your tasks repo and token first.
+        <button type="button" id="open-options" class="btn primary">Open settings</button>
+      </div>
+
+      <div id="fields">
+        <label class="field">
+          <span>Title</span>
+          <input id="title" type="text" required autofocus />
+        </label>
+        <label class="field">
+          <span>Notes</span>
+          <textarea id="notes" rows="3"></textarea>
+        </label>
+        <div class="field">
+          <span>Priority</span>
+          <div id="priority" class="priority-picker"></div>
+        </div>
+        <div class="row">
+          <label class="field grow">
+            <span>List</span>
+            <select id="list"></select>
+          </label>
+          <button type="button" id="star" class="star" title="Mark important" aria-pressed="false">&#9734;</button>
+        </div>
+        <button id="add" type="submit" class="btn primary wide">Add</button>
+      </div>
+      <div id="status" class="status" role="status"></div>
+    </form>
+    <script type="module" src="./src/popup.ts"></script>
+  </body>
+</html>

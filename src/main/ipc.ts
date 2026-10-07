@@ -5,7 +5,7 @@ import * as cache from './localCache'
 import * as secureStore from './secureStore'
 import * as googleAuth from './googleAuth'
 import { calendarImportEnabled, getLastImport, listCalendars, runCalendarImport } from './calendarImport'
-import { verifyRepoAccess, verifyToken as verifyGithubToken } from './github'
+import { verifyRepoAccess, verifyToken as verifyGithubToken } from '@shared/github'
 import { syncNow } from './sync'
 
 export function registerIpcHandlers(): void {

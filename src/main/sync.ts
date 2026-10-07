@@ -1,5 +1,5 @@
 import type { SyncConflict, SyncResult, Task, TaskFolder, TaskList, SyncedSettings } from '@shared/types'
-import { GitHubConflictError, deleteFile, getDataTree, getFileContent, putFile } from './github'
+import { GitHubConflictError, deleteFile, getDataTree, getFileContent, putFile } from '@shared/github'
 import * as cache from './localCache'
 
 /**

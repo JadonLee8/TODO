@@ -10,7 +10,7 @@ Plan for everything in `TODO.md`. The items are ordered so that each phase build
 | 4 | Drag and drop tasks between lists | M | No | ✅ Done |
 | 5 | List folders | L | **Yes**: new `data/folders.json`, `TaskList.folderId` | ✅ Done |
 | 6 | Google Calendar integration | XL | **Yes**: synced calendar settings, `TaskSource.htmlLink` | 🚧 In progress |
-| 7 | Chrome extension | L | No (writes the existing task format) | Not started |
+| 7 | Chrome extension | L | No (writes the existing task format) | ✅ Done |
 
 Every format change is **additive and optional**. Missing fields get default values when they're read, so older copies of the app on other devices keep working.
 
@@ -126,7 +126,7 @@ Folders go in a new synced file, `data/folders.json`, rather than being packed i
 
 **UI:** Replace the "Coming soon" block in `SettingsModal` with: client ID/secret fields, a Connect/Disconnect button, a list of calendars with checkboxes (from `calendarList`), the target list, days ahead, default priority, the overdue toggle and the last import result. Imported tasks show a 📅 marker in `TaskRow`, and an "Open in Google Calendar" link in `TaskDetailPanel`.
 
-## Phase 7: Chrome extension (L)
+## Phase 7: Chrome extension (L) — ✅ Done
 
 *(Open question 4: what should it do? This plan assumes **quick-add from the browser**.)*
 

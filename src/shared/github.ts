@@ -3,6 +3,7 @@
  * Each putFile/deleteFile call creates exactly one commit on the target branch —
  * that's what gives us "a commit every time a task is added or removed" for free,
  * and each file's `sha` doubles as an optimistic-concurrency token for conflict detection.
+ * Environment-agnostic (fetch + TextEncoder), shared by the Electron main process and the Chrome extension.
  */
 
 const API_BASE = 'https://api.github.com'
@@ -81,7 +82,7 @@ export async function getFileContent(token: string, owner: string, repo: string,
   if (res.status === 404) return null
   if (!res.ok) throw new GitHubApiError(res.status, `Failed to read ${path} (${res.status})`)
   const data = (await res.json()) as { content: string; encoding: string; sha: string }
-  const content = Buffer.from(data.content, data.encoding === 'base64' ? 'base64' : 'utf8').toString('utf8')
+  const content = data.encoding === 'base64' ? base64ToUtf8(data.content) : data.content
   return { content, sha: data.sha }
 }
 
@@ -100,7 +101,7 @@ export async function putFile(
     method: 'PUT',
     body: {
       message,
-      content: Buffer.from(content, 'utf8').toString('base64'),
+      content: utf8ToBase64(content),
       branch,
       ...(sha ? { sha } : {})
     }
@@ -123,4 +124,19 @@ export async function deleteFile(token: string, owner: string, repo: string, pat
 
 function encodePath(path: string): string {
   return path.split('/').map(encodeURIComponent).join('/')
+}
+
+// Base64 <-> UTF-8 without Node's Buffer, so this client also runs in the browser extension.
+
+export function utf8ToBase64(text: string): string {
+  const bytes = new TextEncoder().encode(text)
+  let binary = ''
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  return btoa(binary)
+}
+
+export function base64ToUtf8(b64: string): string {
+  // GitHub wraps base64 content at 60 columns.
+  const binary = atob(b64.replace(/\s/g, ''))
+  return new TextDecoder().decode(Uint8Array.from(binary, (c) => c.charCodeAt(0)))
 }

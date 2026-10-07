@@ -46,11 +46,29 @@ See `src/shared/types.ts` for the exact `Task`, `TaskList`, and `SyncedSettings`
 ## Commands
 
 ```
-npm run dev        # run the app in development (hot reload)
-npm run typecheck  # type-check main/preload + renderer
-npm run build       # type-check + production build (out/)
-npm run dist        # build + package a portable Windows .exe (dist/)
+npm run dev              # run the app in development (hot reload)
+npm run typecheck        # type-check main/preload, renderer and the Chrome extension
+npm test                 # unit tests (vitest)
+npm run build            # type-check + production build (out/)
+npm run dist             # build + package a portable Windows .exe (dist/)
+npm run build:extension  # build the Chrome extension (extension/dist/)
 ```
+
+## Chrome extension (quick add)
+
+Adds tasks from the browser without the desktop app running: it writes `data/tasks/<uuid>.json` straight to your tasks repo, and the app picks the task up on its next Sync.
+
+- **Toolbar popup**: title and notes are prefilled with the tab's title and URL; pick a priority, a list and ★, then **Add**.
+- **Right-click → Add to TODO** on a page, link or selected text opens the popup prefilled with that.
+
+Setup:
+
+1. `npm run build:extension`
+2. In Chrome, open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and pick the `extension/dist` folder.
+3. Create a **separate** fine-grained PAT for the extension (only the tasks repo, *Contents: Read and write*) so it can be revoked on its own.
+4. Open the extension's options (⚙ in the popup), enter the repo owner, name, branch and the token, then **Test connection**.
+
+⚠️ The extension keeps its token in `chrome.storage.local`, which is *not* encrypted by the OS the way the desktop app's DPAPI-protected token is. Anyone with access to your Chrome profile could read it, which is another reason to give it its own narrowly scoped token.
 
 ## Google Calendar import
 
