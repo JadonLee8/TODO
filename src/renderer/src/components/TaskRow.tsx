@@ -58,7 +58,7 @@ export function TaskRow({
         e.dataTransfer.effectAllowed = 'move'
       }}
     >
-      <span className="task-priority" title={`Priority ${task.priority}`}>
+      <span className="task-priority" data-tooltip={`Priority ${task.priority}`}>
         {PRIORITY_LABELS[task.priority]}
       </span>
 
@@ -68,7 +68,8 @@ export function TaskRow({
           e.stopPropagation()
           handleCheck()
         }}
-        title={task.completed ? 'Mark as not complete' : 'Mark as complete'}
+        data-tooltip={task.completed ? 'Mark as not done' : 'Mark as done'}
+        aria-label={task.completed ? `Mark “${task.title}” as not done` : `Mark “${task.title}” as done`}
         aria-pressed={done}
       >
         <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden>
@@ -83,12 +84,12 @@ export function TaskRow({
       {listName && <span className="list-tag">{listName}</span>}
       {conflicted && <span className="conflict-badge">Sync conflict</span>}
       {task.source?.type === 'google_calendar' && (
-        <span className="task-meta" title="Imported from Google Calendar">
+        <span className="task-meta" data-tooltip="Imported from Google Calendar">
           📅
         </span>
       )}
       {dueDay && !conflicted && (
-        <span className={`task-meta due${overdue ? ' overdue' : ''}`} title={overdue ? 'Overdue' : 'Due date'}>
+        <span className={`task-meta due${overdue ? ' overdue' : ''}`} data-tooltip={overdue ? 'Overdue' : 'Due date'}>
           {formatDueDate(task.dueDate!)}
         </span>
       )}
@@ -99,7 +100,8 @@ export function TaskRow({
           e.stopPropagation()
           onToggleStar()
         }}
-        title={task.starred ? 'Unmark important' : 'Mark important'}
+        data-tooltip={task.starred ? 'Unmark important' : 'Mark important'}
+        aria-label={task.starred ? `Unmark “${task.title}” as important` : `Mark “${task.title}” as important`}
         aria-pressed={task.starred}
       >
         {task.starred ? '★' : '☆'}

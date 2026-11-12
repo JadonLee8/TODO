@@ -3,11 +3,13 @@ import type { Priority, Task } from '@shared/types'
 import { MAIN_LIST_ID } from '@shared/types'
 import { useAppState } from '../state/AppStateContext'
 import { PriorityPicker } from './PriorityPicker'
+import { useConfirm } from './ConfirmDialog'
 
 export function TaskDetailPanel({ task, onClose }: { task: Task; onClose: () => void }) {
   const { lists, updateTask, deleteTask, toggleComplete, toggleStarred } = useAppState()
   const [title, setTitle] = useState(task.title)
   const [notes, setNotes] = useState(task.notes)
+  const confirm = useConfirm()
 
   function commitTitle() {
     if (title.trim() && title !== task.title) void updateTask({ ...task, title: title.trim() })
@@ -19,7 +21,7 @@ export function TaskDetailPanel({ task, onClose }: { task: Task; onClose: () => 
   return (
     <div className="overlay" onClick={onClose}>
       <div className="panel" onClick={(e) => e.stopPropagation()}>
-        <button className="close-x" onClick={onClose}>
+        <button className="close-x" onClick={onClose} aria-label="Close">
           &#10005;
         </button>
 
@@ -84,11 +86,16 @@ export function TaskDetailPanel({ task, onClose }: { task: Task; onClose: () => 
         <div className="button-row">
           <button
             className="btn danger"
-            onClick={() => {
-              if (confirm('Delete this task?')) {
-                void deleteTask(task.id)
-                onClose()
-              }
+            onClick={async () => {
+              const ok = await confirm({
+                title: `Delete “${task.title}”?`,
+                message: 'You can undo this from Settings › Activity.',
+                confirmLabel: 'Delete task',
+                tone: 'danger'
+              })
+              if (!ok) return
+              void deleteTask(task.id)
+              onClose()
             }}
           >
             Delete task

@@ -73,11 +73,52 @@ export interface CalendarSettings {
   promoteOverdue: boolean
 }
 
+/** Every color the UI uses (see shared/themes.ts). Hover, overlay and tint shades are derived from these in the stylesheet. */
+export interface ThemeColors {
+  paper: string
+  paperRaised: string
+  sidebar: string
+  field: string
+  ink: string
+  slate: string
+  faint: string
+  hairline: string
+  highlighter: string
+  danger: string
+  ok: string
+}
+
+/** The three colors a theme is built from; the rest of `ThemeColors` is derived from them. */
+export interface ThemeBase {
+  background: string
+  primary: string
+  secondary: string
+}
+
+export interface Theme {
+  id: string
+  name: string
+  description: string
+  base: ThemeBase
+  /** Derived colors the user set by hand. */
+  overrides: Partial<ThemeColors>
+}
+
+export interface AppearanceSettings {
+  /** The theme in use: a built-in theme id (see shared/themes.ts) or one of `customThemes`. */
+  themeId: string
+  /** Themes the user made. Built-in themes aren't stored. */
+  customThemes: Theme[]
+  /** The font in use (see shared/fonts.ts). */
+  fontId: string
+}
+
 /** Synced settings — not secret, stored in the GitHub repo alongside tasks. */
 export interface SyncedSettings {
   ranking: RankingSettings
   archive: ArchiveSettings
   calendar: CalendarSettings
+  appearance: AppearanceSettings
 }
 
 export const DEFAULT_SYNCED_SETTINGS: SyncedSettings = {
@@ -95,6 +136,11 @@ export const DEFAULT_SYNCED_SETTINGS: SyncedSettings = {
     daysAhead: 7,
     defaultPriority: 3,
     promoteOverdue: true
+  },
+  appearance: {
+    themeId: 'paper',
+    customThemes: [],
+    fontId: 'grotesque'
   }
 }
 

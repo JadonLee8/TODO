@@ -7,6 +7,8 @@ import * as googleAuth from './googleAuth'
 import { calendarImportEnabled, getLastImport, listCalendars, runCalendarImport } from './calendarImport'
 import { verifyRepoAccess, verifyToken as verifyGithubToken } from '@shared/github'
 import { syncNow } from './sync'
+import { getActivity, saveActivity } from './activityLog'
+import type { ActivityEntry } from '@shared/activity'
 
 export function registerIpcHandlers(): void {
   ipcMain.handle(CHANNELS.tasksGetAll, () => cache.getAllTasks())
@@ -124,6 +126,9 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(CHANNELS.calendarListCalendars, () => outcome(listCalendars()))
   ipcMain.handle(CHANNELS.calendarImportNow, () => runCalendarImport())
   ipcMain.handle(CHANNELS.calendarGetLastImport, () => getLastImport())
+
+  ipcMain.handle(CHANNELS.activityGetAll, () => getActivity())
+  ipcMain.handle(CHANNELS.activitySave, (_e, entries: ActivityEntry[]) => saveActivity(entries))
 }
 
 async function outcome<T>(promise: Promise<T>): Promise<Outcome<T>> {

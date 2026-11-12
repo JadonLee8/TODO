@@ -38,6 +38,10 @@ const api: Api = {
     listCalendars: () => ipcRenderer.invoke(CHANNELS.calendarListCalendars),
     importNow: () => ipcRenderer.invoke(CHANNELS.calendarImportNow),
     getLastImport: () => ipcRenderer.invoke(CHANNELS.calendarGetLastImport)
+  },
+  activity: {
+    getAll: () => ipcRenderer.invoke(CHANNELS.activityGetAll),
+    save: (entries) => ipcRenderer.invoke(CHANNELS.activitySave, entries)
   }
 }
 

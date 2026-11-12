@@ -10,6 +10,7 @@ import type {
   TaskFolder,
   TaskList
 } from './types'
+import type { ActivityEntry } from './activity'
 
 /** Channel names shared between preload (sender) and main (handler) to avoid typos. */
 export const CHANNELS = {
@@ -36,7 +37,9 @@ export const CHANNELS = {
   calendarDisconnect: 'calendar:disconnect',
   calendarListCalendars: 'calendar:listCalendars',
   calendarImportNow: 'calendar:importNow',
-  calendarGetLastImport: 'calendar:getLastImport'
+  calendarGetLastImport: 'calendar:getLastImport',
+  activityGetAll: 'activity:getAll',
+  activitySave: 'activity:save'
 } as const
 
 /** Result of an operation that can fail with a message for the user (errors don't cross IPC cleanly). */
@@ -86,5 +89,9 @@ export interface Api {
     listCalendars(): Promise<Outcome<GoogleCalendarInfo[]>>
     importNow(): Promise<CalendarImportResult>
     getLastImport(): Promise<CalendarImportResult | null>
+  }
+  activity: {
+    getAll(): Promise<ActivityEntry[]>
+    save(entries: ActivityEntry[]): Promise<void>
   }
 }

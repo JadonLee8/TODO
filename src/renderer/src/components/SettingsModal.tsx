@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useAppState } from '../state/AppStateContext'
 import { CalendarSettingsSection } from './CalendarSettingsSection'
+import { ThemeSettingsSection } from './ThemeSettingsSection'
+import { FontSettingsSection } from './FontSettingsSection'
 
-export function SettingsModal({ onClose }: { onClose: () => void }) {
+export function SettingsModal({ onClose, onOpenActivity }: { onClose: () => void; onOpenActivity: () => void }) {
   const { localSettings, saveLocalSettings, saveToken, clearToken, verifyToken, syncedSettings, saveSyncedSettings } = useAppState()
 
   const [owner, setOwner] = useState(localSettings.githubOwner)
@@ -51,12 +53,23 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
   return (
     <div className="overlay centered" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <button className="close-x" onClick={onClose}>
+        <button className="close-x" onClick={onClose} aria-label="Close">
           &#10005;
         </button>
         <h2>Settings</h2>
 
-        <div className="settings-section" style={{ borderTop: 'none', marginTop: 0 }}>
+        <ThemeSettingsSection style={{ borderTop: 'none', marginTop: 0 }} />
+        <FontSettingsSection />
+
+        <div className="settings-section">
+          <h3>Activity</h3>
+          <p className="hint">See the changes you've made on this device and undo any of them, like a deleted list or task.</p>
+          <button className="btn" onClick={onOpenActivity}>
+            Open activity log
+          </button>
+        </div>
+
+        <div className="settings-section">
           <h3>GitHub sync</h3>
           <p className="hint">Tasks are stored as JSON files in this repo. Use a fine-grained personal access token scoped to just this repo (Contents: read and write).</p>
 

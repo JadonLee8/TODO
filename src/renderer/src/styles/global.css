@@ -1,25 +1,34 @@
 /*
  * Visual idea: the ranking is the design. Priority is set in the type itself (P1 large and heavy, P5 small,
- * narrow and faint), on cool paper in navy ink. The one accent is a highlighter stroke, used only for "look
- * here": the selected list and overdue dates.
+ * narrow and faint). The one accent is a highlighter stroke, used only for "look here": the selected list
+ * and overdue dates.
+ *
+ * Colors come from the active theme (shared/themes.ts), which sets the base variables below on <html>.
+ * These defaults match the built-in "Paper and ink" theme. Everything else is derived from the base colors,
+ * so every theme gets consistent hover, overlay and tint shades. Don't hardcode colors in this file.
  */
 :root {
   --paper: #eef1f5;
   --paper-raised: #f8f9fb;
   --sidebar: #e3e8ef;
+  --field: #ffffff;
   --ink: #1c2534;
   --slate: #5f6879;
   --faint: #778093;
   --hairline: #d5dbe4;
-  --hover: rgba(28, 37, 52, 0.06);
   --highlighter: #f3e35a;
   --danger: #b42318;
-  --danger-bg: #fbe9e7;
   --ok: #1f7a4d;
+
+  --hover: color-mix(in srgb, var(--ink) 7%, transparent);
+  --danger-bg: color-mix(in srgb, var(--danger) 12%, var(--paper));
+  --ink-hover: color-mix(in srgb, var(--ink) 85%, var(--paper));
+  --tint: color-mix(in srgb, var(--ink) 10%, var(--paper));
+  --overlay: color-mix(in srgb, var(--ink) 28%, transparent);
 
   --font: 'Bricolage Grotesque Variable', 'Segoe UI', system-ui, sans-serif;
   --radius: 6px;
-  --shadow-float: 0 12px 32px rgba(28, 37, 52, 0.18);
+  --shadow-float: 0 12px 32px color-mix(in srgb, #000 22%, transparent);
 }
 
 * {
@@ -89,23 +98,23 @@ select {
   background: var(--sidebar);
   display: flex;
   flex-direction: column;
-  padding: 16px 10px 10px;
+  padding: 10px 8px 8px;
 }
 
 .sidebar-title {
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 780;
   font-stretch: 80%;
   letter-spacing: 0.01em;
-  padding: 0 10px 14px;
+  padding: 0 8px 8px;
 }
 
 .sidebar-search {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 10px;
-  margin-bottom: 8px;
+  padding: 3px 8px;
+  margin-bottom: 4px;
   border: 1px solid var(--hairline);
   border-radius: var(--radius);
   background: var(--paper-raised);
@@ -134,13 +143,13 @@ select {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 5px 10px;
+  padding: 3px 8px;
   border-radius: var(--radius);
   background: transparent;
   border: none;
   text-align: left;
   width: 100%;
-  font-size: 13.5px;
+  font-size: 13px;
 }
 
 .nav-item:hover {
@@ -154,7 +163,7 @@ select {
 .nav-item .label {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
   white-space: nowrap;
 }
@@ -171,7 +180,7 @@ select {
 }
 
 .nav-icon {
-  width: 18px;
+  width: 16px;
   text-align: center;
   flex-shrink: 0;
   color: var(--slate);
@@ -188,16 +197,16 @@ select {
 .sidebar-divider {
   height: 1px;
   background: var(--hairline);
-  margin: 8px 10px;
+  margin: 4px 8px;
 }
 
 .new-list-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 5px 10px;
+  gap: 8px;
+  padding: 3px 8px;
   border-radius: var(--radius);
-  font-size: 13.5px;
+  font-size: 13px;
   color: var(--slate);
 }
 
@@ -221,8 +230,8 @@ select {
 
 .sidebar-footer {
   border-top: 1px solid var(--hairline);
-  margin-top: 8px;
-  padding-top: 8px;
+  margin-top: 4px;
+  padding-top: 4px;
 }
 
 /* The delete button sits over the right edge of the row (where the count is)
@@ -294,7 +303,7 @@ select {
 
 .list-row.nested .nav-item,
 .list-row.nested .rename-row {
-  padding-left: 30px;
+  padding-left: 26px;
 }
 
 .rename-row {
@@ -314,12 +323,12 @@ select {
 /* ---- Drag and drop ---- */
 
 .nav-item.drop-target {
-  background: rgba(243, 227, 90, 0.55);
+  background: color-mix(in srgb, var(--highlighter) 55%, transparent);
   box-shadow: inset 0 0 0 1.5px var(--ink);
 }
 
 .sidebar-section.drop-target {
-  background: rgba(243, 227, 90, 0.25);
+  background: color-mix(in srgb, var(--highlighter) 25%, transparent);
 }
 
 /* Insertion line shown while dragging a list or folder to reorder it. */
@@ -350,7 +359,7 @@ select {
 
 .list-row.nested.drop-before::before,
 .list-row.nested.drop-after::after {
-  left: 28px;
+  left: 24px;
 }
 
 /* ---- Context menu ---- */
@@ -372,7 +381,7 @@ select {
   background: none;
   border: none;
   text-align: left;
-  padding: 6px 10px;
+  padding: 4px 10px;
   border-radius: 4px;
   font-size: 13px;
 }
@@ -411,8 +420,8 @@ select {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 24px;
-  padding: 36px 48px 20px;
+  gap: 16px;
+  padding: 16px 28px 8px;
 }
 
 .header-text {
@@ -421,7 +430,7 @@ select {
 
 .content-header h1 {
   margin: 0;
-  font-size: 44px;
+  font-size: 30px;
   line-height: 1;
   font-weight: 760;
   font-stretch: 82%;
@@ -432,13 +441,13 @@ select {
 }
 
 .header-summary {
-  margin: 8px 0 0;
-  font-size: 15px;
+  margin: 2px 0 0;
+  font-size: 13px;
   color: var(--slate);
 }
 
 .sync-meta {
-  margin: 4px 0 0;
+  margin: 2px 0 0;
   font-size: 12px;
   color: var(--slate);
 }
@@ -452,7 +461,7 @@ select {
   align-items: center;
   gap: 14px;
   flex-shrink: 0;
-  padding-top: 6px;
+  padding-top: 2px;
 }
 
 .conflict-count {
@@ -464,7 +473,7 @@ select {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 14px;
+  padding: 4px 10px;
   border: 1px solid var(--ink);
   border-radius: var(--radius);
   background: transparent;
@@ -487,7 +496,7 @@ select {
 .task-scroll {
   flex: 1;
   overflow-y: auto;
-  padding: 4px 48px 48px;
+  padding: 0 28px 24px;
 }
 
 .task-scroll > * {
@@ -499,10 +508,10 @@ select {
 .add-task-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   /* The + sits in the checkbox column so typed text lines up with task titles. */
-  padding: 10px 0 10px 34px;
-  margin-bottom: 14px;
+  padding: 5px 0 5px 30px;
+  margin-bottom: 4px;
   border-bottom: 1px solid var(--hairline);
 }
 
@@ -516,7 +525,7 @@ select {
   border: none;
   outline: none;
   background: transparent;
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .add-task-bar input::placeholder {
@@ -524,7 +533,7 @@ select {
 }
 
 .add-task-plus {
-  width: 18px;
+  width: 16px;
   text-align: center;
   font-size: 18px;
   line-height: 1;
@@ -536,8 +545,8 @@ select {
 .task-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 7px 8px 7px 0;
+  gap: 10px;
+  padding: 3px 6px 3px 0;
   border-radius: var(--radius);
   cursor: pointer;
 }
@@ -547,7 +556,7 @@ select {
 }
 
 .task-priority {
-  width: 22px;
+  width: 20px;
   flex-shrink: 0;
   text-align: right;
   font-size: 11px;
@@ -557,8 +566,8 @@ select {
 }
 
 .checkbox {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -594,11 +603,11 @@ select {
 
 /* Priority is set in the type: each tier steps down in size, weight and width. */
 .task-row.p1 {
-  padding-top: 10px;
-  padding-bottom: 10px;
+  padding-top: 5px;
+  padding-bottom: 5px;
 }
 .task-row.p1 .task-title {
-  font-size: 19px;
+  font-size: 17px;
   font-weight: 680;
   font-stretch: 100%;
 }
@@ -606,27 +615,27 @@ select {
   color: var(--ink);
 }
 .task-row.p2 .task-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 560;
   font-stretch: 96%;
 }
 .task-row.p3 .task-title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 460;
   font-stretch: 92%;
 }
 .task-row.p4 .task-title {
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 420;
   font-stretch: 88%;
   color: var(--slate);
 }
 .task-row.p5 {
-  padding-top: 5px;
-  padding-bottom: 5px;
+  padding-top: 2px;
+  padding-bottom: 2px;
 }
 .task-row.p5 .task-title {
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 400;
   font-stretch: 85%;
   color: var(--faint);
@@ -634,7 +643,7 @@ select {
 
 /* Done tasks drop out of the hierarchy. */
 .task-row.completed .task-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 400;
   font-stretch: 90%;
   color: var(--slate);
@@ -725,8 +734,8 @@ select {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 24px 0 6px;
-  padding: 4px 0 4px 38px;
+  margin: 10px 0 2px;
+  padding: 2px 0 2px 33px;
   border: none;
   background: none;
   font-size: 13px;
@@ -739,7 +748,7 @@ select {
 }
 
 .empty-state {
-  padding: 32px 0 0 34px;
+  padding: 14px 0 0 30px;
   color: var(--slate);
 }
 
@@ -751,7 +760,7 @@ select {
   z-index: 20;
   display: flex;
   justify-content: flex-end;
-  background: rgba(28, 37, 52, 0.28);
+  background: var(--overlay);
 }
 
 .overlay.centered {
@@ -762,7 +771,7 @@ select {
 .panel {
   width: 380px;
   height: 100%;
-  padding: 24px;
+  padding: 16px 18px;
   overflow-y: auto;
   background: var(--paper-raised);
   box-shadow: var(--shadow-float);
@@ -773,15 +782,15 @@ select {
   max-width: 90vw;
   max-height: 85vh;
   overflow-y: auto;
-  padding: 28px;
+  padding: 18px 20px;
   border-radius: 10px;
   background: var(--paper-raised);
   box-shadow: var(--shadow-float);
 }
 
 .modal h2 {
-  margin: 0 0 8px;
-  font-size: 28px;
+  margin: 0 0 4px;
+  font-size: 22px;
   line-height: 1.1;
   font-weight: 740;
   font-stretch: 84%;
@@ -803,12 +812,12 @@ select {
 }
 
 .field {
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .field label {
   display: block;
-  margin-bottom: 6px;
+  margin-bottom: 3px;
   font-size: 12.5px;
   font-weight: 600;
   color: var(--slate);
@@ -821,10 +830,10 @@ select {
 .field textarea,
 .field select {
   width: 100%;
-  padding: 8px 10px;
+  padding: 5px 8px;
   border: 1px solid var(--hairline);
   border-radius: var(--radius);
-  background: #fff;
+  background: var(--field);
   outline: none;
 }
 
@@ -836,7 +845,7 @@ select {
 
 .field textarea {
   resize: vertical;
-  min-height: 90px;
+  min-height: 64px;
   line-height: 1.5;
 }
 
@@ -857,11 +866,11 @@ input[type='checkbox'] {
 
 .priority-chip {
   flex: 1;
-  height: 38px;
+  height: 30px;
   padding: 0;
   border: 1px solid var(--hairline);
   border-radius: var(--radius);
-  background: #fff;
+  background: var(--field);
   color: var(--ink);
 }
 
@@ -905,15 +914,15 @@ input[type='checkbox'] {
 .button-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 18px;
+  gap: 8px;
+  margin-top: 10px;
 }
 
 .btn {
-  padding: 8px 16px;
+  padding: 5px 12px;
   border: 1px solid var(--hairline);
   border-radius: var(--radius);
-  background: #fff;
+  background: var(--field);
   font-size: 13px;
   font-weight: 600;
 }
@@ -929,7 +938,7 @@ input[type='checkbox'] {
 }
 
 .btn.primary:hover:not(:disabled) {
-  background: #2c3850;
+  background: var(--ink-hover);
 }
 
 .btn.danger {
@@ -947,8 +956,8 @@ input[type='checkbox'] {
 }
 
 .settings-section {
-  margin-top: 20px;
-  padding-top: 20px;
+  margin-top: 12px;
+  padding-top: 12px;
   border-top: 1px solid var(--hairline);
 }
 
@@ -960,10 +969,10 @@ input[type='checkbox'] {
 }
 
 .hint {
-  margin: 0 0 14px;
+  margin: 0 0 8px;
   max-width: 62ch;
   font-size: 13px;
-  line-height: 1.5;
+  line-height: 1.4;
   color: var(--slate);
 }
 
@@ -996,7 +1005,7 @@ input[type='checkbox'] {
   display: flex;
   gap: 10px;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
   font-size: 13px;
   color: var(--slate);
 }
@@ -1009,7 +1018,7 @@ input[type='checkbox'] {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
   font-size: 13px;
 }
 
@@ -1038,13 +1047,417 @@ input[type='checkbox'] {
   vertical-align: middle;
 }
 
+/* Confirm buttons: red for changes that lose or overwrite something, the theme's highlight for milder ones. */
+.btn.danger-solid {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: var(--paper);
+}
+
+.btn.danger-solid:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--danger) 85%, var(--ink));
+  background: color-mix(in srgb, var(--danger) 85%, var(--ink));
+}
+
+.btn.accent {
+  border-color: color-mix(in srgb, var(--highlighter) 60%, var(--ink));
+  background: var(--highlighter);
+  color: var(--ink);
+}
+
+.btn.accent:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--highlighter) 85%, var(--ink));
+}
+
+.btn.small {
+  padding: 2px 10px;
+  font-size: 12px;
+}
+
+/* ---- Confirm dialog ---- */
+
+.dialog-overlay {
+  z-index: 60;
+}
+
+.dialog {
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  padding: 16px 18px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-float);
+  animation: dialog-in 0.14s ease-out;
+}
+
+.dialog h2 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.25;
+  font-weight: 700;
+  font-stretch: 90%;
+}
+
+.dialog-message {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--slate);
+}
+
+.dialog-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+}
+
+/* ---- Tooltips ---- */
+
+.tooltip {
+  position: fixed;
+  z-index: 100;
+  max-width: 260px;
+  padding: 3px 8px;
+  border-radius: 5px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 12px;
+  line-height: 1.35;
+  pointer-events: none;
+  box-shadow: 0 4px 12px color-mix(in srgb, #000 18%, transparent);
+}
+
+/* ---- Activity log ---- */
+
+.activity-modal {
+  width: 600px;
+}
+
+.activity-day h3 {
+  margin: 14px 0 4px;
+  font-size: 13px;
+  font-weight: 640;
+  color: var(--slate);
+}
+
+.activity-day ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.activity-entry {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--hairline) 60%, transparent);
+  font-size: 13px;
+}
+
+.activity-entry time {
+  width: 62px;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--slate);
+  font-variant-numeric: tabular-nums;
+}
+
+.activity-summary {
+  flex: 1;
+  min-width: 0;
+}
+
+.activity-entry.undone .activity-summary {
+  color: var(--slate);
+  text-decoration: line-through;
+}
+
+.activity-status {
+  font-size: 12px;
+  color: var(--slate);
+}
+
+.activity-empty {
+  color: var(--slate);
+  font-size: 13px;
+}
+
+.activity-footer {
+  margin-top: 14px;
+}
+
+.hint a {
+  color: var(--ink);
+}
+
+/* ---- Colors and fonts ---- */
+
+.option-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 8px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--field);
+  text-align: left;
+}
+
+.option:hover:not(:disabled) {
+  border-color: var(--slate);
+}
+
+.option.selected {
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+
+.option:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.option.selected:disabled {
+  opacity: 1;
+}
+
+/* Each theme's own colors, so you can see it before picking it. */
+.theme-swatches {
+  display: flex;
+  flex-shrink: 0;
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.theme-swatches span {
+  width: 12px;
+  height: 26px;
+}
+
+.option-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.option-name {
+  font-size: 13px;
+  font-weight: 640;
+}
+
+.option-default {
+  font-weight: 400;
+  color: var(--slate);
+}
+
+.option-description {
+  font-size: 12px;
+  color: var(--slate);
+}
+
+.theme-editor {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+}
+
+.theme-colors {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 16px;
+  margin-bottom: 6px;
+}
+
+.color-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+}
+
+.color-field input[type='color'] {
+  width: 26px;
+  height: 22px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+}
+
+.color-field input[type='color']::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.color-field input[type='color']::-webkit-color-swatch {
+  border: none;
+}
+
+.color-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.color-hex {
+  width: 72px;
+  padding: 2px 6px;
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  background: var(--field);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+
+.color-hex:focus {
+  border-color: var(--ink);
+}
+
+.font-sample {
+  width: 40px;
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.base-colors {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 4px 0 8px;
+}
+
+.base-color {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.base-color .color-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.base-color input[type='color'] {
+  width: 34px;
+  height: 30px;
+}
+
+.color-hint {
+  display: block;
+  font-size: 11.5px;
+  color: var(--slate);
+}
+
+.base-color .color-label {
+  font-weight: 600;
+}
+
+.base-color .color-hint {
+  font-weight: 400;
+}
+
+.presets {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  /* Room for six presets, so the hex fields line up whatever the count. */
+  width: 128px;
+}
+
+.preset {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--hairline);
+  border-radius: 50%;
+}
+
+.preset:hover {
+  border-color: var(--slate);
+}
+
+.preset.selected {
+  box-shadow: 0 0 0 2px var(--paper-raised), 0 0 0 3.5px var(--ink);
+}
+
+.fine-tune {
+  margin: 8px 0;
+}
+
+.fine-tune summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--slate);
+  margin-bottom: 6px;
+}
+
+.fine-tune summary:hover {
+  color: var(--ink);
+}
+
+.fine-tune .theme-colors {
+  grid-template-columns: 1fr;
+  max-width: 380px;
+}
+
+.derived-color {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.derived-color .color-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.link-button {
+  padding: 0 2px;
+  border: none;
+  background: none;
+  font-size: 12px;
+  color: var(--slate);
+  text-decoration: underline;
+}
+
+.link-button:hover {
+  color: var(--ink);
+}
+
+.link-button.placeholder {
+  visibility: hidden;
+}
+
 /* ---- Conflict diff ---- */
 
 .diff-row {
   display: grid;
   grid-template-columns: 90px 1fr;
   gap: 8px;
-  padding: 8px 0;
+  padding: 5px 0;
   border-bottom: 1px solid var(--hairline);
   font-size: 13px;
 }
@@ -1066,11 +1479,43 @@ input[type='checkbox'] {
 }
 
 .diff-value.local {
-  background: #dfe6f1;
+  background: var(--tint);
 }
 
 .diff-value.remote {
-  background: rgba(243, 227, 90, 0.4);
+  background: color-mix(in srgb, var(--highlighter) 40%, transparent);
+}
+
+/* Doto's dots get bigger with weight; at normal weights they're too small to read, so the whole scale moves up. */
+html[data-font='dot-matrix'] body {
+  font-weight: 600;
+  /* Sets Doto a little larger than the other fonts at the same font-size. */
+  font-size-adjust: 0.62;
+}
+
+/* The font menu shows Doto at a readable weight whatever font is active. */
+.option.font-dot-matrix .font-sample,
+.option.font-dot-matrix .option-name {
+  font-weight: 900;
+}
+html[data-font='dot-matrix'] .content-header h1,
+html[data-font='dot-matrix'] .sidebar-title,
+html[data-font='dot-matrix'] .task-row.p1 .task-title {
+  font-weight: 900;
+}
+html[data-font='dot-matrix'] .task-row.p2 .task-title,
+html[data-font='dot-matrix'] .nav-item.active {
+  font-weight: 820;
+}
+html[data-font='dot-matrix'] .task-row.p3 .task-title {
+  font-weight: 720;
+}
+html[data-font='dot-matrix'] .task-row.p4 .task-title {
+  font-weight: 640;
+}
+html[data-font='dot-matrix'] .task-row.p5 .task-title,
+html[data-font='dot-matrix'] .task-row.completed .task-title {
+  font-weight: 580;
 }
 
 @media (prefers-reduced-motion: reduce) {

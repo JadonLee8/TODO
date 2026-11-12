@@ -159,7 +159,8 @@ export function getSettings(): SyncedSettings {
   return {
     ranking: { ...DEFAULT_SYNCED_SETTINGS.ranking, ...stored.ranking },
     archive: { ...DEFAULT_SYNCED_SETTINGS.archive, ...stored.archive },
-    calendar: { ...DEFAULT_SYNCED_SETTINGS.calendar, ...stored.calendar }
+    calendar: { ...DEFAULT_SYNCED_SETTINGS.calendar, ...stored.calendar },
+    appearance: { ...DEFAULT_SYNCED_SETTINGS.appearance, ...stored.appearance }
   }
 }
 export function writeSettingsLocal(settings: SyncedSettings): void {

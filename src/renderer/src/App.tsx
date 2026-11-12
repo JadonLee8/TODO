@@ -1,19 +1,33 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Task } from '@shared/types'
 import { MAIN_LIST_ID } from '@shared/types'
+import { resolveTheme } from '@shared/themes'
+import { resolveFont } from '@shared/fonts'
 import { useAppState } from './state/AppStateContext'
+import { applyAppearance } from './theme'
 import { Sidebar } from './components/Sidebar'
 import { TaskListView } from './components/TaskListView'
 import { TaskDetailPanel } from './components/TaskDetailPanel'
 import { ConflictModal } from './components/ConflictModal'
 import { SettingsModal } from './components/SettingsModal'
+import { ActivityModal } from './components/ActivityModal'
 
 export default function App() {
-  const { loading, tasks, lists, conflicts, view, syncing, lastSyncResult, runSync } = useAppState()
+  const { loading, tasks, lists, conflicts, view, syncing, lastSyncResult, runSync, syncedSettings, previewTheme } = useAppState()
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [activityOpen, setActivityOpen] = useState(false)
   const [openTaskId, setOpenTaskId] = useState<string | null>(null)
   const [openConflictTaskId, setOpenConflictTaskId] = useState<string | null>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
+
+  const savedTheme = useMemo(() => resolveTheme(syncedSettings.appearance), [syncedSettings.appearance])
+  const font = resolveFont(syncedSettings.appearance.fontId)
+  useEffect(() => {
+    // Wait for settings to load, so the cached look isn't replaced by the defaults for a moment.
+    if (loading) return
+    if (previewTheme) applyAppearance(previewTheme, font, { remember: false })
+    else applyAppearance(savedTheme, font)
+  }, [loading, savedTheme, previewTheme, font])
 
   // Ctrl+F / Ctrl+K focus the sidebar search box.
   useEffect(() => {
@@ -91,7 +105,16 @@ export default function App() {
           const liveConflict = conflicts.find((c) => c.taskId === openConflictTaskId)
           return liveConflict ? <ConflictModal conflict={liveConflict} onClose={() => setOpenConflictTaskId(null)} /> : null
         })()}
-      {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
+      {settingsOpen && (
+        <SettingsModal
+          onClose={() => setSettingsOpen(false)}
+          onOpenActivity={() => {
+            setSettingsOpen(false)
+            setActivityOpen(true)
+          }}
+        />
+      )}
+      {activityOpen && <ActivityModal onClose={() => setActivityOpen(false)} />}
     </div>
   )
 }

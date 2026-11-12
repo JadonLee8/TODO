@@ -5,3 +5,6 @@
 - [x] drag and drop tasks between lists
 - [x] make the lists in the left side bar more dense
 - [x] add a search bar to the left bar on the top
+- add kanban view and burndown chart
+- create CI/CD for this project and a github release. 
+- download the app onto my computer

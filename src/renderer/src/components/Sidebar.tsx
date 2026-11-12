@@ -3,6 +3,7 @@ import type { TaskFolder, TaskList } from '@shared/types'
 import { MAIN_LIST_ID } from '@shared/types'
 import { buildSidebarTree, type DropPosition, type SidebarItem } from '@shared/sidebarTree'
 import { useAppState } from '../state/AppStateContext'
+import { useConfirm } from './ConfirmDialog'
 import { TASK_MIME, dropTargetProps, mergeDropProps, sortDropProps, startSortDrag, type SortKind } from '../dnd'
 
 /** Which folders are collapsed is a per-device preference, so it lives in localStorage rather than the repo. */
@@ -51,6 +52,7 @@ export function Sidebar({
     starTask
   } = useAppState()
   const selectedListId = view.kind === 'list' ? view.listId : null
+  const confirm = useConfirm()
   const [newListName, setNewListName] = useState('')
   const [collapsed, setCollapsed] = useState(loadCollapsed)
   // The list or folder currently being renamed inline.
@@ -174,10 +176,22 @@ export function Sidebar({
             </button>
             <button
               className="list-delete"
-              title={`Delete "${list.name}"`}
-              onClick={(e) => {
+              data-tooltip="Delete list"
+              aria-label={`Delete list “${list.name}”`}
+              onClick={async (e) => {
                 e.stopPropagation()
-                if (confirm(`Delete "${list.name}"? Its tasks will move to Tasks.`)) void deleteList(list.id)
+                const n = tasks.filter((t) => t.listId === list.id && !t.archived).length
+                const ok = await confirm({
+                  title: `Delete list “${list.name}”?`,
+                  message: (
+                    <>
+                      {n > 0 && `Its ${n} task${n === 1 ? '' : 's'} will move to Tasks. `}You can undo this from Settings › Activity.
+                    </>
+                  ),
+                  confirmLabel: 'Delete list',
+                  tone: 'danger'
+                })
+                if (ok) void deleteList(list.id)
               }}
             >
               &#10005;
@@ -238,12 +252,21 @@ export function Sidebar({
               </button>
               <button
                 className="list-delete"
-                title={`Delete folder "${folder.name}"`}
-                onClick={(e) => {
+                data-tooltip="Delete folder"
+                aria-label={`Delete folder “${folder.name}”`}
+                onClick={async (e) => {
                   e.stopPropagation()
-                  if (confirm(`Delete folder "${folder.name}"? Its lists will move out of it; nothing else is deleted.`)) {
-                    void deleteFolder(folder.id)
-                  }
+                  // Nothing is lost (its lists stay), so this asks with the milder accent button.
+                  const ok = await confirm({
+                    title: `Delete folder “${folder.name}”?`,
+                    message:
+                      folderLists.length > 0
+                        ? `Its ${folderLists.length} list${folderLists.length === 1 ? '' : 's'} will move out of the folder. No lists or tasks are deleted.`
+                        : 'The folder is empty, so nothing else changes.',
+                    confirmLabel: 'Delete folder',
+                    tone: 'accent'
+                  })
+                  if (ok) void deleteFolder(folder.id)
                 }}
               >
                 &#10005;
