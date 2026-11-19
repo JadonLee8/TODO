@@ -1,10 +1,17 @@
 import { useState } from 'react'
 import { useAppState } from '../state/AppStateContext'
-import { CalendarSettingsSection } from './CalendarSettingsSection'
 import { ThemeSettingsSection } from './ThemeSettingsSection'
 import { FontSettingsSection } from './FontSettingsSection'
 
-export function SettingsModal({ onClose, onOpenActivity }: { onClose: () => void; onOpenActivity: () => void }) {
+export function SettingsModal({
+  onClose,
+  onOpenActivity,
+  onOpenExtensions
+}: {
+  onClose: () => void
+  onOpenActivity: () => void
+  onOpenExtensions: () => void
+}) {
   const { localSettings, saveLocalSettings, saveToken, clearToken, verifyToken, syncedSettings, saveSyncedSettings } = useAppState()
 
   const [owner, setOwner] = useState(localSettings.githubOwner)
@@ -17,7 +24,7 @@ export function SettingsModal({ onClose, onOpenActivity }: { onClose: () => void
   const [midPriorityWeight, setMidPriorityWeight] = useState(syncedSettings.ranking.midPriorityWeight)
   const [ageNormalizationDays, setAgeNormalizationDays] = useState(syncedSettings.ranking.ageNormalizationDays)
   const [archiveAfterDays, setArchiveAfterDays] = useState(syncedSettings.archive.archiveAfterDays)
-  const [starredFirst, setStarredFirst] = useState(syncedSettings.ranking.starredFirst ?? false)
+  const [starredFirst, setStarredFirst] = useState(syncedSettings.ranking.starredFirst)
 
   async function commitRepoField(field: 'githubOwner' | 'githubRepo' | 'githubBranch', value: string) {
     await saveLocalSettings({
@@ -45,9 +52,12 @@ export function SettingsModal({ onClose, onOpenActivity }: { onClose: () => void
   async function commitRanking(overrides: { starredFirst?: boolean } = {}) {
     await saveSyncedSettings({
       ...syncedSettings,
-      ranking: { midPriorityWeight, ageNormalizationDays, starredFirst: overrides.starredFirst ?? starredFirst },
-      archive: { archiveAfterDays }
+      ranking: { midPriorityWeight, ageNormalizationDays, starredFirst: overrides.starredFirst ?? starredFirst }
     })
+  }
+
+  async function commitArchive() {
+    await saveSyncedSettings({ ...syncedSettings, archive: { archiveAfterDays: Math.max(1, archiveAfterDays) } })
   }
 
   return (
@@ -121,6 +131,11 @@ export function SettingsModal({ onClose, onOpenActivity }: { onClose: () => void
             </button>
           </div>
           {testStatus && <div className={`status-line ${testStatus.ok ? 'ok' : 'error'}`}>{testStatus.message}</div>}
+
+          <label className="checkbox-field">
+            <input type="checkbox" checked={localSettings.autoSync} onChange={(e) => void saveLocalSettings({ autoSync: e.target.checked })} />
+            Sync automatically on this device (when the app opens, and a few seconds after a change)
+          </label>
         </div>
 
         <div className="settings-section">
@@ -175,19 +190,18 @@ export function SettingsModal({ onClose, onOpenActivity }: { onClose: () => void
               inputMode="numeric"
               value={archiveAfterDays}
               onChange={(e) => setArchiveAfterDays(Number(e.target.value) || 0)}
-              onBlur={() => void commitRanking()}
+              onBlur={() => void commitArchive()}
             />
           </div>
         </div>
 
-        <div className="settings-section">
-          <h3>
-            Import from Microsoft To Do <span className="badge-coming-soon">Coming soon</span>
-          </h3>
-          <p className="hint">Requires registering an Azure AD app for Microsoft Graph access. Not yet configured.</p>
+        <div className="settings-section desktop-only">
+          <h3>Extensions</h3>
+          <p className="hint">Google Calendar import, the Obsidian vault mirror and the browser companions live in the extension marketplace.</p>
+          <button className="btn" onClick={onOpenExtensions}>
+            Open extensions
+          </button>
         </div>
-
-        <CalendarSettingsSection />
       </div>
     </div>
   )

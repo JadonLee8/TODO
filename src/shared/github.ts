@@ -122,6 +122,57 @@ export async function deleteFile(token: string, owner: string, repo: string, pat
   if (!res.ok) throw new GitHubApiError(res.status, `Failed to delete ${path} (${res.status})`)
 }
 
+/**
+ * Adds many new files in a single commit through the Git Data API: one tree, one commit and one ref update, instead
+ * of a Contents API request per file (GitHub allows only about 80 content-creating requests a minute and 500 an hour).
+ * Only for files that don't exist yet. Returns each path's blob sha, or null when it can't be done safely: the branch
+ * doesn't exist, one of the paths already exists, or the branch moved while committing. Callers then fall back to
+ * putFile, which detects conflicts per file.
+ */
+export async function commitNewFiles(
+  token: string,
+  owner: string,
+  repo: string,
+  branch: string,
+  files: Array<{ path: string; content: string }>,
+  message: string
+): Promise<Map<string, string> | null> {
+  const base = `/repos/${owner}/${repo}/git`
+  const json = async <T>(res: Response, what: string): Promise<T> => {
+    if (!res.ok) throw new GitHubApiError(res.status, `Failed to ${what} (${res.status})`)
+    return (await res.json()) as T
+  }
+
+  const refRes = await request(token, `${base}/ref/heads/${encodePath(branch)}`)
+  if (refRes.status === 404 || refRes.status === 409) return null // no branch yet (409 = empty repo)
+  const headSha = (await json<{ object: { sha: string } }>(refRes, 'read the branch')).object.sha
+  const head = await json<{ tree: { sha: string } }>(await request(token, `${base}/commits/${headSha}`), 'read the latest commit')
+
+  const existing = await json<{ tree: Array<{ path: string }> }>(await request(token, `${base}/trees/${head.tree.sha}?recursive=1`), 'list the repo')
+  const existingPaths = new Set(existing.tree.map((e) => e.path))
+  if (files.some((f) => existingPaths.has(f.path))) return null
+
+  const tree = await json<{ sha: string }>(
+    await request(token, `${base}/trees`, {
+      method: 'POST',
+      body: { base_tree: head.tree.sha, tree: files.map((f) => ({ path: f.path, mode: '100644', type: 'blob', content: f.content })) }
+    }),
+    'create the tree'
+  )
+  const commit = await json<{ sha: string }>(
+    await request(token, `${base}/commits`, { method: 'POST', body: { message, tree: tree.sha, parents: [headSha] } }),
+    'create the commit'
+  )
+  // Not forced: fails with 422 if someone pushed since we read the branch. The orphaned commit is harmless.
+  const update = await request(token, `${base}/refs/heads/${encodePath(branch)}`, { method: 'PATCH', body: { sha: commit.sha, force: false } })
+  if (update.status === 422 || update.status === 409) return null
+  await json(update, 'update the branch')
+
+  const created = await json<{ tree: Array<{ path: string; sha: string }> }>(await request(token, `${base}/trees/${tree.sha}?recursive=1`), 'list the new commit')
+  const wanted = new Set(files.map((f) => f.path))
+  return new Map(created.tree.filter((e) => wanted.has(e.path)).map((e) => [e.path, e.sha]))
+}
+
 function encodePath(path: string): string {
   return path.split('/').map(encodeURIComponent).join('/')
 }

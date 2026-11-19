@@ -18,6 +18,8 @@ export function Tooltips() {
   const [el, setEl] = useState<HTMLDivElement | null>(null)
 
   useEffect(() => {
+    // Hover tooltips have no place on a touch screen, where a tap would leave one hanging.
+    if (window.api.platform !== 'desktop') return
     let timer: number | undefined
     let current: Element | null = null
     let lastHidden = 0

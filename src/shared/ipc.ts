@@ -1,8 +1,10 @@
 import type {
-  CalendarImportResult,
   EditableLocalSettings,
+  ExtensionId,
+  ExtensionRunResult,
   GoogleCalendarInfo,
   LocalSettings,
+  MicrosoftTodoAccount,
   SyncConflict,
   SyncResult,
   SyncedSettings,
@@ -11,6 +13,8 @@ import type {
   TaskList
 } from './types'
 import type { ActivityEntry } from './activity'
+import type { SharedText } from './share'
+import type { WidgetAction, WidgetSnapshot } from './widget'
 
 /** Channel names shared between preload (sender) and main (handler) to avoid typos. */
 export const CHANNELS = {
@@ -36,8 +40,11 @@ export const CHANNELS = {
   calendarConnect: 'calendar:connect',
   calendarDisconnect: 'calendar:disconnect',
   calendarListCalendars: 'calendar:listCalendars',
-  calendarImportNow: 'calendar:importNow',
-  calendarGetLastImport: 'calendar:getLastImport',
+  extensionsRunNow: 'extensions:runNow',
+  extensionsGetLastRuns: 'extensions:getLastRuns',
+  obsidianPickVault: 'obsidian:pickVault',
+  obsidianOpen: 'obsidian:open',
+  microsoftTodoListAccounts: 'microsoftTodo:listAccounts',
   activityGetAll: 'activity:getAll',
   activitySave: 'activity:save'
 } as const
@@ -53,6 +60,20 @@ export interface TokenCheckResult {
 
 /** The full API surface exposed to the renderer via contextBridge. */
 export interface Api {
+  /** Where the UI is running. The Android app has no extensions and a touch layout. */
+  platform: 'desktop' | 'android'
+  /** Text shared to the app from other apps (Android's share sheet). Absent on desktop. */
+  shareTarget?: {
+    /** Calls `handler` for a share that opened the app and for each one after. Returns an unsubscribe. */
+    onShare(handler: (shared: SharedText) => void): () => void
+  }
+  /** The Android home-screen widget. Absent on desktop. */
+  widget?: {
+    /** Hands the widget what to show. Cheap to call often: an unchanged snapshot is not sent again. */
+    update(snapshot: WidgetSnapshot): void
+    /** Calls `handler` when a tap on the widget opened the app (now or earlier). Returns an unsubscribe. */
+    onOpen(handler: (action: WidgetAction) => void): () => void
+  }
   tasks: {
     getAll(): Promise<Task[]>
     upsert(task: Task): Promise<void>
@@ -87,8 +108,22 @@ export interface Api {
     connect(): Promise<Outcome>
     disconnect(): Promise<void>
     listCalendars(): Promise<Outcome<GoogleCalendarInfo[]>>
-    importNow(): Promise<CalendarImportResult>
-    getLastImport(): Promise<CalendarImportResult | null>
+  }
+  extensions: {
+    /** Runs one installed extension now, without syncing. Tasks it creates are pushed on the next Sync. */
+    runNow(id: ExtensionId): Promise<ExtensionRunResult>
+    /** The last result of each extension on this device. */
+    getLastRuns(): Promise<Partial<Record<ExtensionId, ExtensionRunResult>>>
+  }
+  obsidian: {
+    /** Asks for the vault folder and saves it for this device; null if cancelled. */
+    pickVault(): Promise<Outcome<string | null>>
+    /** Opens a task's note, or the inbox or Base, in Obsidian. */
+    open(target: { taskId: string } | { file: 'inbox' | 'base' }): Promise<Outcome>
+  }
+  microsoftTodo: {
+    /** The Microsoft To Do accounts signed in to the Windows app on this computer. */
+    listAccounts(): Promise<Outcome<MicrosoftTodoAccount[]>>
   }
   activity: {
     getAll(): Promise<ActivityEntry[]>

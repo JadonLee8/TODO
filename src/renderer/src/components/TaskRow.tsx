@@ -111,7 +111,7 @@ export function TaskRow({
 }
 
 /** "Oct 7", with the year only when it isn't this year. */
-function formatDueDate(iso: string): string {
+export function formatDueDate(iso: string): string {
   const date = new Date(iso)
   const thisYear = date.getUTCFullYear() === new Date().getFullYear()
   return date.toLocaleDateString(undefined, { timeZone: 'UTC', month: 'short', day: 'numeric', ...(thisYear ? {} : { year: 'numeric' }) })

@@ -1,15 +1,23 @@
 import { useState } from 'react'
 import type { Priority, Task } from '@shared/types'
-import { MAIN_LIST_ID } from '@shared/types'
+import { isInstalled } from '@shared/extensions'
 import { useAppState } from '../state/AppStateContext'
 import { PriorityPicker } from './PriorityPicker'
+import { ListSelect } from './ListSelect'
 import { useConfirm } from './ConfirmDialog'
 
 export function TaskDetailPanel({ task, onClose }: { task: Task; onClose: () => void }) {
-  const { lists, updateTask, deleteTask, toggleComplete, toggleStarred } = useAppState()
+  const { updateTask, deleteTask, toggleComplete, toggleStarred, syncedSettings, localSettings } = useAppState()
   const [title, setTitle] = useState(task.title)
   const [notes, setNotes] = useState(task.notes)
+  const [obsidianError, setObsidianError] = useState<string | null>(null)
   const confirm = useConfirm()
+  const inVault = isInstalled(syncedSettings.extensions, 'obsidian') && !!localSettings.obsidianVaultPath
+
+  async function openInObsidian() {
+    const res = await window.api.obsidian.open({ taskId: task.id })
+    setObsidianError(res.ok ? null : res.error)
+  }
 
   function commitTitle() {
     if (title.trim() && title !== task.title) void updateTask({ ...task, title: title.trim() })
@@ -37,16 +45,7 @@ export function TaskDetailPanel({ task, onClose }: { task: Task; onClose: () => 
 
         <div className="field">
           <label>List</label>
-          <select value={task.listId} onChange={(e) => void updateTask({ ...task, listId: e.target.value })}>
-            <option value={MAIN_LIST_ID}>Tasks</option>
-            {lists
-              .filter((l) => l.id !== MAIN_LIST_ID)
-              .map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.name}
-                </option>
-              ))}
-          </select>
+          <ListSelect value={task.listId} onChange={(listId) => void updateTask({ ...task, listId })} />
         </div>
 
         <div className="field">
@@ -72,6 +71,16 @@ export function TaskDetailPanel({ task, onClose }: { task: Task; onClose: () => 
                 Open in Google Calendar
               </a>
             )}
+          </div>
+        )}
+        {task.source?.type === 'obsidian_inbox' && <div className="source-line">Captured from {task.source.notePath} in Obsidian</div>}
+        {task.source?.type === 'microsoft_todo' && <div className="source-line">Imported from “{task.source.listName}” in Microsoft To Do</div>}
+        {inVault && (
+          <div className="source-line">
+            <button className="link-button" onClick={() => void openInObsidian()}>
+              Open note in Obsidian
+            </button>
+            {obsidianError && <span className="status-line error">{obsidianError}</span>}
           </div>
         )}
 

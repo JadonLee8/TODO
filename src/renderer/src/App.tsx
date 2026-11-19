@@ -11,13 +11,23 @@ import { TaskDetailPanel } from './components/TaskDetailPanel'
 import { ConflictModal } from './components/ConflictModal'
 import { SettingsModal } from './components/SettingsModal'
 import { ActivityModal } from './components/ActivityModal'
+import { ExtensionsModal } from './components/extensions/ExtensionsModal'
+import { StatsView } from './components/StatsView'
+import { ContentHeader } from './components/ContentHeader'
+import { catalogEntry } from '@shared/extensions'
+import { sharedTextToTask } from '@shared/share'
+import { widgetSnapshot } from '@shared/widget'
 
 export default function App() {
-  const { loading, tasks, lists, conflicts, view, syncing, lastSyncResult, runSync, syncedSettings, previewTheme } = useAppState()
+  const { loading, tasks, lists, conflicts, view, setView, syncing, lastSyncResult, runSync, syncedSettings, previewTheme, addTask } =
+    useAppState()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [activityOpen, setActivityOpen] = useState(false)
+  const [extensionsOpen, setExtensionsOpen] = useState(false)
   const [openTaskId, setOpenTaskId] = useState<string | null>(null)
   const [openConflictTaskId, setOpenConflictTaskId] = useState<string | null>(null)
+  // On a phone the sidebar is a drawer over the list (see the Android rules in global.css).
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   const savedTheme = useMemo(() => resolveTheme(syncedSettings.appearance), [syncedSettings.appearance])
@@ -42,6 +52,44 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
+  // Text shared from another app (Android) becomes a task in Tasks, opened so its title and list can be adjusted.
+  const addTaskRef = useRef(addTask)
+  addTaskRef.current = addTask
+  useEffect(() => {
+    if (loading || !window.api.shareTarget) return
+    return window.api.shareTarget.onShare((shared) => {
+      const input = sharedTextToTask(shared)
+      if (!input) return
+      void addTaskRef.current({ ...input, listId: MAIN_LIST_ID }).then((task) => {
+        setDrawerOpen(false)
+        setOpenTaskId(task.id)
+      })
+    })
+  }, [loading])
+
+  // Android home-screen widget: keep what it shows current, and open what was tapped on it.
+  useEffect(() => {
+    if (!loading) window.api.widget?.update(widgetSnapshot(tasks, syncedSettings))
+  }, [loading, tasks, syncedSettings])
+  useEffect(() => {
+    if (loading || !window.api.widget) return
+    return window.api.widget.onOpen((action) => {
+      setDrawerOpen(false)
+      if (action.kind === 'task') {
+        setOpenTaskId(action.taskId)
+        return
+      }
+      setOpenTaskId(null)
+      setView({ kind: 'list', listId: MAIN_LIST_ID })
+      requestAnimationFrame(() => document.querySelector<HTMLInputElement>('.add-task-bar input')?.focus())
+    })
+  }, [loading, setView])
+
+  // Picking a list closes the drawer. Typing a search keeps it open so the box keeps focus.
+  useEffect(() => {
+    if (view.kind !== 'search') setDrawerOpen(false)
+  }, [view])
+
   if (loading) {
     return <div className="loading">Loading your tasks…</div>
   }
@@ -49,6 +97,7 @@ export default function App() {
   let title: string
   if (view.kind === 'search') title = 'Search'
   else if (view.kind === 'important') title = 'Important'
+  else if (view.kind === 'stats') title = 'Stats'
   else if (view.listId === MAIN_LIST_ID) title = 'Tasks'
   else title = lists.find((l) => l.id === view.listId)?.name ?? 'Tasks'
 
@@ -59,40 +108,60 @@ export default function App() {
         : `Synced: ${lastSyncResult.pushed} pushed, ${lastSyncResult.pulled} pulled${
             lastSyncResult.conflicts.length ? `, ${lastSyncResult.conflicts.length} conflict${lastSyncResult.conflicts.length === 1 ? '' : 's'}` : ''
           }.`}
-      {lastSyncResult.calendarImport &&
-        (lastSyncResult.calendarImport.error
-          ? ` Calendar import failed: ${lastSyncResult.calendarImport.error}`
-          : lastSyncResult.calendarImport.imported
-            ? ` ${lastSyncResult.calendarImport.imported} imported from Google Calendar.`
-            : '')}
+      {lastSyncResult.extensions.map((r) => {
+        const name = catalogEntry(r.extensionId)?.name ?? r.extensionId
+        if (r.error) return ` ${name} failed: ${r.error}.`
+        return r.changedTasks ? ` ${name}: ${r.summary}.` : ''
+      })}
     </p>
   )
 
+  const actions = (
+    <>
+      {conflicts.length > 0 && (
+        <span className="conflict-count">
+          {conflicts.length} unresolved conflict{conflicts.length === 1 ? '' : 's'}
+        </span>
+      )}
+      <button className="sync-button" onClick={() => void runSync()} disabled={syncing}>
+        <span aria-hidden>⇅</span>
+        {syncing ? 'Syncing…' : 'Sync'}
+      </button>
+    </>
+  )
+
   return (
-    <div className="app-shell">
-      <Sidebar onOpenSettings={() => setSettingsOpen(true)} searchInputRef={searchInputRef} />
+    <div className={`app-shell${drawerOpen ? ' drawer-open' : ''}`}>
+      <Sidebar
+        onOpenSettings={() => {
+          setDrawerOpen(false)
+          setSettingsOpen(true)
+        }}
+        onOpenExtensions={() => setExtensionsOpen(true)}
+        onSearchSubmit={() => setDrawerOpen(false)}
+        searchInputRef={searchInputRef}
+      />
+      {/* Phone only (hidden on desktop by CSS). */}
+      <div className="drawer-scrim" onClick={() => setDrawerOpen(false)} />
+      <button className="menu-button" onClick={() => setDrawerOpen(true)} aria-label="Open lists">
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
+          <path d="M2 4.5h14M2 9h14M2 13.5h14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+      </button>
 
       <main className="main-content">
-        <TaskListView
-          view={view}
-          title={title}
-          status={syncStatus}
-          actions={
-            <>
-              {conflicts.length > 0 && (
-                <span className="conflict-count">
-                  {conflicts.length} unresolved conflict{conflicts.length === 1 ? '' : 's'}
-                </span>
-              )}
-              <button className="sync-button" onClick={() => void runSync()} disabled={syncing}>
-                <span aria-hidden>⇅</span>
-                {syncing ? 'Syncing…' : 'Sync'}
-              </button>
-            </>
-          }
-          onOpenTask={(task: Task) => setOpenTaskId(task.id)}
-          onOpenConflict={(taskId: string) => setOpenConflictTaskId(taskId)}
-        />
+        {view.kind === 'stats' ? (
+          <StatsView header={(summary) => <ContentHeader title={title} summary={summary} status={syncStatus} actions={actions} />} />
+        ) : (
+          <TaskListView
+            view={view}
+            title={title}
+            status={syncStatus}
+            actions={actions}
+            onOpenTask={(task: Task) => setOpenTaskId(task.id)}
+            onOpenConflict={(taskId: string) => setOpenConflictTaskId(taskId)}
+          />
+        )}
       </main>
 
       {openTaskId &&
@@ -112,8 +181,13 @@ export default function App() {
             setSettingsOpen(false)
             setActivityOpen(true)
           }}
+          onOpenExtensions={() => {
+            setSettingsOpen(false)
+            setExtensionsOpen(true)
+          }}
         />
       )}
+      {extensionsOpen && <ExtensionsModal onClose={() => setExtensionsOpen(false)} />}
       {activityOpen && <ActivityModal onClose={() => setActivityOpen(false)} />}
     </div>
   )

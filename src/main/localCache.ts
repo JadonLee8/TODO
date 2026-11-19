@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, rmSync
 import { join } from 'path'
 import type { SyncedSettings, Task, TaskFolder, TaskList } from '@shared/types'
 import { DEFAULT_SYNCED_SETTINGS } from '@shared/types'
+import { emptySyncMeta, mergeSyncedSettings, type SyncMeta } from '@shared/cacheStore'
 
 /**
  * Local-first cache mirroring the shape of the GitHub repo's `data/` directory:
@@ -10,30 +11,8 @@ import { DEFAULT_SYNCED_SETTINGS } from '@shared/types'
  * `cache/synced/...` holds the last content known to match GitHub exactly — used as the
  * "base" for conflict comparisons and to know each file's last-known blob sha.
  * `sync-meta.json` tracks which files have local edits pending push.
+ * This module is the desktop's `CacheStore` (shared/cacheStore.ts).
  */
-
-export interface SyncMeta {
-  fileShas: Record<string, string>
-  dirtyTaskIds: string[]
-  deletedTaskIds: string[]
-  /** Tasks with an unresolved edit-vs-edit conflict (persisted so a restart doesn't lose them). */
-  conflictTaskIds: string[]
-  listsDirty: boolean
-  foldersDirty: boolean
-  settingsDirty: boolean
-  lastSyncedAt: string | null
-}
-
-const EMPTY_META: SyncMeta = {
-  fileShas: {},
-  dirtyTaskIds: [],
-  deletedTaskIds: [],
-  conflictTaskIds: [],
-  listsDirty: false,
-  foldersDirty: false,
-  settingsDirty: false,
-  lastSyncedAt: null
-}
 
 function root(): string {
   return join(app.getPath('userData'), 'cache')
@@ -154,14 +133,7 @@ export function setSyncedFolders(folders: TaskFolder[]): void {
 // ---- Settings ----
 
 export function getSettings(): SyncedSettings {
-  const stored = readJson<Partial<SyncedSettings>>(settingsPath(), {})
-  // Settings files written before a section existed (e.g. `calendar`) get that section's defaults.
-  return {
-    ranking: { ...DEFAULT_SYNCED_SETTINGS.ranking, ...stored.ranking },
-    archive: { ...DEFAULT_SYNCED_SETTINGS.archive, ...stored.archive },
-    calendar: { ...DEFAULT_SYNCED_SETTINGS.calendar, ...stored.calendar },
-    appearance: { ...DEFAULT_SYNCED_SETTINGS.appearance, ...stored.appearance }
-  }
+  return mergeSyncedSettings(readJson<Partial<SyncedSettings>>(settingsPath(), {}))
 }
 export function writeSettingsLocal(settings: SyncedSettings): void {
   writeJson(settingsPath(), settings)
@@ -176,7 +148,7 @@ export function setSyncedSettings(settings: SyncedSettings): void {
 // ---- Sync metadata ----
 
 export function getSyncMeta(): SyncMeta {
-  return readJson<SyncMeta>(syncMetaPath(), EMPTY_META)
+  return { ...emptySyncMeta(), ...readJson<Partial<SyncMeta>>(syncMetaPath(), {}) }
 }
 export function writeSyncMeta(meta: SyncMeta): void {
   writeJson(syncMetaPath(), meta)

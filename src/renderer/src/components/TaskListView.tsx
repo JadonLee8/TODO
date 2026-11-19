@@ -6,6 +6,20 @@ import { searchTasks } from '@shared/search'
 import { useAppState, type View } from '../state/AppStateContext'
 import { AddTaskBar } from './AddTaskBar'
 import { TaskRow } from './TaskRow'
+import { BoardView } from './BoardView'
+import { ContentHeader } from './ContentHeader'
+
+type Layout = 'list' | 'board'
+/** List or board is a per-device preference, like collapsed folders. */
+const LAYOUT_KEY = 'todo.layout'
+
+function loadLayout(): Layout {
+  try {
+    return localStorage.getItem(LAYOUT_KEY) === 'board' ? 'board' : 'list'
+  } catch {
+    return 'list'
+  }
+}
 
 export function TaskListView({
   view,
@@ -15,7 +29,8 @@ export function TaskListView({
   onOpenTask,
   onOpenConflict
 }: {
-  view: View
+  /** Every view but stats. */
+  view: Exclude<View, { kind: 'stats' }>
   title: string
   /** A line under the summary, e.g. the last sync result. */
   status?: ReactNode
@@ -25,6 +40,18 @@ export function TaskListView({
 }) {
   const { tasks, lists, syncedSettings, conflicts, toggleComplete, toggleStarred } = useAppState()
   const [showCompleted, setShowCompleted] = useState(false)
+  const [layout, setLayoutState] = useState<Layout>(loadLayout)
+  const setLayout = (next: Layout) => {
+    setLayoutState(next)
+    try {
+      localStorage.setItem(LAYOUT_KEY, next)
+    } catch {
+      // Not remembering the layout is harmless.
+    }
+  }
+  // Search results are always a list.
+  // The board is drag-based, so the phone always shows a list.
+  const board = layout === 'board' && view.kind !== 'search' && window.api.platform === 'desktop'
 
   const viewTasks = useMemo(() => {
     if (view.kind === 'search') return searchTasks(tasks, view.query)
@@ -76,23 +103,47 @@ export function TaskListView({
           ? 'All done'
           : ''
 
+  const layoutToggle = view.kind !== 'search' && (
+    <div className="segmented desktop-only" role="tablist" aria-label="Layout">
+      {(['list', 'board'] as const).map((l) => (
+        <button key={l} role="tab" aria-selected={layout === l} className={layout === l ? 'on' : ''} onClick={() => setLayout(l)}>
+          {l === 'list' ? 'List' : 'Board'}
+        </button>
+      ))}
+    </div>
+  )
+
   return (
     <>
-      <header className="content-header">
-        <div className="header-text">
-          <h1>{title}</h1>
-          {summary && <p className="header-summary">{summary}</p>}
-          {status}
-        </div>
-        <div className="header-actions">{actions}</div>
-      </header>
+      <ContentHeader
+        title={title}
+        summary={summary}
+        status={status}
+        actions={
+          <>
+            {layoutToggle}
+            {actions}
+          </>
+        }
+      />
 
-      <div className="task-scroll">
+      <div className={`task-scroll${board ? ' board-scroll' : ''}`}>
         {view.kind === 'list' && <AddTaskBar listId={view.listId} />}
         {/* Tasks added from Important go into the main Tasks list, already starred. */}
         {view.kind === 'important' && <AddTaskBar listId={MAIN_LIST_ID} starred />}
 
-        {ordered.length === 0 && completed.length === 0 && (
+        {board && (
+          <BoardView
+            active={ordered}
+            completed={completed}
+            conflictById={conflictById}
+            listNameById={listNameById}
+            showListNames={mixesLists}
+            onOpen={handleClick}
+          />
+        )}
+
+        {!board && ordered.length === 0 && completed.length === 0 && (
           <div className="empty-state">
             {view.kind === 'search'
               ? 'Nothing matches. Search looks in task titles and notes.'
@@ -102,9 +153,9 @@ export function TaskListView({
           </div>
         )}
 
-        {ordered.map(renderRow)}
+        {!board && ordered.map(renderRow)}
 
-        {completed.length > 0 && (
+        {!board && completed.length > 0 && (
           <>
             <button className="section-heading" onClick={() => setShowCompleted((v) => !v)} aria-expanded={showCompleted}>
               <svg className={`folder-chevron${showCompleted ? ' open' : ''}`} width="10" height="10" viewBox="0 0 10 10" aria-hidden>

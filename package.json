@@ -1,6 +1,6 @@
 {
   "name": "todo-app",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A simple, priority-ranked TODO app backed by a GitHub repo for version-controlled sync.",
   "main": "out/main/index.js",
   "author": "Jadon Lee",
@@ -8,25 +8,36 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "npm run typecheck && electron-vite build",
-    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.extension.json",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.extension.json && tsc --noEmit -p tsconfig.mobile.json",
     "build:extension": "vite build --config extension/vite.config.ts",
+    "build:mobile": "vite build --config mobile/vite.config.ts && cap sync android",
+    "android:run": "npm run build:mobile && cap run android",
+    "android:apk": "npm run build:mobile && cd mobile/android && gradlew.bat assembleDebug",
     "test": "vitest run",
     "preview": "electron-vite preview",
-    "dist": "npm run build && electron-builder --win portable"
+    "dist": "npm run build && electron-builder --win --publish never"
   },
   "dependencies": {
     "@fontsource-variable/bricolage-grotesque": "^5.3.0",
     "@fontsource-variable/doto": "^5.3.0",
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "sql.js": "^1.13.0"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/cli": "^8.6.2",
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/preferences": "^8.0.1",
     "@types/chrome": "^0.3.4",
     "@types/node": "^22.9.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "@types/sql.js": "^1.4.9",
     "@vitejs/plugin-react": "^4.3.3",
+    "capacitor-secure-storage-plugin": "^0.14.2",
     "electron": "^33.2.0",
     "electron-builder": "^25.1.8",
     "electron-vite": "^2.3.0",
@@ -38,10 +49,22 @@
     "appId": "com.jadonlee.todoapp",
     "productName": "TODO",
     "files": [
-      "out/**/*"
+      "out/**/*",
+      "!node_modules/sql.js/dist/{sqljs-*.zip,sql-asm*.js,sql-wasm-debug.*,worker.*}"
     ],
     "win": {
-      "target": "portable"
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "artifactName": "TODO-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "TODO-${version}-portable.${ext}"
     }
   },
   "allowScripts": {

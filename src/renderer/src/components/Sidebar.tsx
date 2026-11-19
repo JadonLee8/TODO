@@ -27,9 +27,14 @@ function saveCollapsed(ids: Set<string>): void {
 
 export function Sidebar({
   onOpenSettings,
+  onOpenExtensions,
+  onSearchSubmit,
   searchInputRef
 }: {
   onOpenSettings: () => void
+  onOpenExtensions: () => void
+  /** Enter in the search box: the phone closes its drawer to show the results. */
+  onSearchSubmit?: () => void
   searchInputRef: RefObject<HTMLInputElement>
 }) {
   const {
@@ -288,10 +293,14 @@ export function Sidebar({
         <input
           ref={searchInputRef}
           type="search"
-          placeholder="Search (Ctrl+F)"
+          placeholder={window.api.platform === 'desktop' ? 'Search (Ctrl+F)' : 'Search'}
           value={view.kind === 'search' ? view.query : ''}
           onChange={(e) => setSearchQuery(e.target.value)}
           onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.currentTarget.blur()
+              onSearchSubmit?.()
+            }
             if (e.key === 'Escape') {
               setSearchQuery('')
               e.currentTarget.blur()
@@ -325,6 +334,13 @@ export function Sidebar({
         <span className="count">{importantCount}</span>
       </button>
 
+      <button className={`nav-item${view.kind === 'stats' ? ' active' : ''}`} onClick={() => setView({ kind: 'stats' })}>
+        <span className="label">
+          <span className="nav-icon">&#8600;</span>
+          <span className="label-text">Stats</span>
+        </span>
+      </button>
+
       <div className="sidebar-divider" />
 
       {/* Dropping a list or folder on empty space here moves it to the bottom, outside any folder. */}
@@ -346,6 +362,12 @@ export function Sidebar({
       </button>
 
       <div className="sidebar-footer">
+        <button className="nav-item desktop-only" onClick={onOpenExtensions}>
+          <span className="label">
+            <span className="nav-icon">&#10697;</span>
+            <span className="label-text">Extensions</span>
+          </span>
+        </button>
         <button className="nav-item" onClick={onOpenSettings}>
           <span className="label">
             <span className="nav-icon">&#9881;</span>

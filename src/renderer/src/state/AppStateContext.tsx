@@ -32,7 +32,7 @@ import {
 } from '@shared/activity'
 
 /** What the main pane is showing. */
-export type View = { kind: 'list'; listId: string } | { kind: 'important' } | { kind: 'search'; query: string }
+export type View = { kind: 'list'; listId: string } | { kind: 'important' } | { kind: 'search'; query: string } | { kind: 'stats' }
 
 interface AppState {
   loading: boolean
@@ -49,7 +49,7 @@ interface AppState {
   setView: (view: View) => void
   /** Switches to the search view; a blank query returns to the view that was showing before the search. */
   setSearchQuery: (query: string) => void
-  addTask: (input: { title: string; listId: string; priority?: Priority; starred?: boolean }) => Promise<void>
+  addTask: (input: { title: string; listId: string; notes?: string; priority?: Priority; starred?: boolean }) => Promise<Task>
   updateTask: (task: Task) => Promise<void>
   toggleComplete: (task: Task) => Promise<void>
   toggleStarred: (task: Task) => Promise<void>
@@ -88,7 +88,8 @@ interface AppState {
   clearToken: () => Promise<void>
   verifyToken: () => Promise<TokenCheckResult>
   refreshLocalSettings: () => Promise<void>
-  reloadTasks: () => Promise<void>
+  /** Re-reads tasks, lists and folders after the main process wrote them (an extension's "Run now"). */
+  reloadData: () => Promise<void>
 
   runSync: () => Promise<void>
   resolveConflictKeepLocal: (taskId: string) => Promise<void>
@@ -96,6 +97,9 @@ interface AppState {
 }
 
 const Ctx = createContext<AppState | null>(null)
+
+const AUTO_SYNC_EDIT_DELAY_MS = 5000
+const AUTO_SYNC_RESUME_GAP_MS = 60_000
 
 export function AppStateProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
   const [loading, setLoading] = useState(true)
@@ -109,6 +113,12 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
   const viewBeforeSearch = useRef<View>(view)
   const [conflicts, setConflicts] = useState<SyncConflict[]>([])
   const [syncing, setSyncing] = useState(false)
+  const syncingRef = useRef(false)
+  /** A sync was asked for while one was running; run another when it ends. */
+  const syncAgain = useRef(false)
+  /** Counts local changes that need pushing. Auto-sync watches it. */
+  const [editCount, setEditCount] = useState(0)
+  const edited = useCallback(() => setEditCount((n) => n + 1), [])
   const [lastSyncResult, setLastSyncResult] = useState<SyncResult | null>(null)
   const [activity, setActivity] = useState<ActivityEntry[]>([])
   const activityLoaded = useRef(false)
@@ -175,33 +185,37 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
   const persistTask = useCallback(async (task: Task) => {
     setTasks((prev) => (prev.some((t) => t.id === task.id) ? prev.map((t) => (t.id === task.id ? task : t)) : [...prev, task]))
     await window.api.tasks.upsert(task)
-  }, [])
+    edited()
+  }, [edited])
 
   const removeTask = useCallback(async (id: string) => {
     setTasks((prev) => prev.filter((t) => t.id !== id))
     await window.api.tasks.remove(id)
-  }, [])
+    edited()
+  }, [edited])
 
   const saveLists = useCallback(async (next: TaskList[]) => {
     setLists(next)
     await window.api.lists.save(next)
-  }, [])
+    edited()
+  }, [edited])
 
   const saveFolders = useCallback(async (next: TaskFolder[]) => {
     setFolders(next)
     await window.api.folders.save(next)
-  }, [])
+    edited()
+  }, [edited])
 
   // ---- User actions: save and log ----
 
   const addTask = useCallback(
-    async (input: { title: string; listId: string; priority?: Priority; starred?: boolean }) => {
+    async (input: { title: string; listId: string; notes?: string; priority?: Priority; starred?: boolean }) => {
       const now = new Date().toISOString()
       const task: Task = {
         id: newId(),
         listId: input.listId,
         title: input.title.trim(),
-        notes: '',
+        notes: input.notes ?? '',
         priority: input.priority ?? 3,
         starred: input.starred ?? false,
         completed: false,
@@ -214,6 +228,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
       }
       await persistTask(task)
       record(`Added “${task.title}” to ${listName(task.listId)}`, { ...NO_CHANGES, tasks: [{ id: task.id, before: null, after: task }] })
+      return task
     },
     [persistTask, record, listName]
   )
@@ -328,7 +343,8 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
   const saveSyncedSettings = useCallback(async (settings: SyncedSettings) => {
     setSyncedSettings(settings)
     await window.api.settings.saveSynced(settings)
-  }, [])
+    edited()
+  }, [edited])
 
   const saveLocalSettings = useCallback(
     async (settings: Partial<EditableLocalSettings>) => {
@@ -355,9 +371,12 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
     setLocalSettings(await window.api.settings.getLocal())
   }, [])
 
-  /** Reloads tasks after something in the main process wrote them (e.g. a calendar import). */
-  const reloadTasks = useCallback(async () => {
-    setTasks(await window.api.tasks.getAll())
+  /** Reloads tasks, lists and folders after something in the main process wrote them (e.g. an import). */
+  const reloadData = useCallback(async () => {
+    const [nextTasks, nextLists, nextFolders] = await Promise.all([window.api.tasks.getAll(), window.api.lists.getAll(), window.api.folders.getAll()])
+    setTasks(nextTasks)
+    setLists(nextLists)
+    setFolders(nextFolders)
   }, [])
 
   const addFolder = useCallback(
@@ -484,22 +503,61 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
   }, [])
 
   const runSync = useCallback(async () => {
+    if (syncingRef.current) {
+      syncAgain.current = true
+      return
+    }
+    syncingRef.current = true
     setSyncing(true)
     try {
       const result = await window.api.sync.run()
       setLastSyncResult(result)
       await refreshFromCache()
     } finally {
+      syncingRef.current = false
       setSyncing(false)
+      if (syncAgain.current) {
+        syncAgain.current = false
+        edited()
+      }
     }
-  }, [refreshFromCache])
+  }, [refreshFromCache, edited])
+
+  // ---- Auto-sync (a per-device setting; on by default in the Android app) ----
+  const autoSync = !loading && localSettings.autoSync && localSettings.hasToken && !!localSettings.githubOwner && !!localSettings.githubRepo
+
+  // When the app opens or comes back to the front, at most once a minute.
+  useEffect(() => {
+    if (!autoSync) return
+    let last = 0
+    const sync = () => {
+      if (document.visibilityState !== 'visible' || Date.now() - last < AUTO_SYNC_RESUME_GAP_MS) return
+      last = Date.now()
+      void runSync()
+    }
+    sync()
+    document.addEventListener('visibilitychange', sync)
+    window.addEventListener('focus', sync)
+    return () => {
+      document.removeEventListener('visibilitychange', sync)
+      window.removeEventListener('focus', sync)
+    }
+  }, [autoSync, runSync])
+
+  // A few seconds after the last change, so a burst of edits is one sync.
+  useEffect(() => {
+    if (!autoSync || editCount === 0) return
+    const timer = window.setTimeout(() => void runSync(), AUTO_SYNC_EDIT_DELAY_MS)
+    return () => window.clearTimeout(timer)
+  }, [autoSync, editCount, runSync])
 
   const resolveConflictKeepLocal = useCallback(
     async (taskId: string) => {
       await window.api.sync.resolveKeepLocal(taskId)
       setConflicts((prev) => prev.filter((c) => c.taskId !== taskId))
+      edited()
     },
-    []
+    [edited]
   )
 
   const resolveConflictKeepRemote = useCallback(async (taskId: string) => {
@@ -550,7 +608,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
       clearToken,
       verifyToken,
       refreshLocalSettings,
-      reloadTasks,
+      reloadData,
       runSync,
       resolveConflictKeepLocal,
       resolveConflictKeepRemote
@@ -594,7 +652,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
       clearToken,
       verifyToken,
       refreshLocalSettings,
-      reloadTasks,
+      reloadData,
       runSync,
       resolveConflictKeepLocal,
       resolveConflictKeepRemote

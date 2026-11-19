@@ -3,6 +3,7 @@ import { CHANNELS } from '@shared/ipc'
 import type { Api } from '@shared/ipc'
 
 const api: Api = {
+  platform: 'desktop',
   tasks: {
     getAll: () => ipcRenderer.invoke(CHANNELS.tasksGetAll),
     upsert: (task) => ipcRenderer.invoke(CHANNELS.tasksUpsert, task),
@@ -35,9 +36,18 @@ const api: Api = {
     saveClientSecret: (secret) => ipcRenderer.invoke(CHANNELS.calendarSaveClientSecret, secret),
     connect: () => ipcRenderer.invoke(CHANNELS.calendarConnect),
     disconnect: () => ipcRenderer.invoke(CHANNELS.calendarDisconnect),
-    listCalendars: () => ipcRenderer.invoke(CHANNELS.calendarListCalendars),
-    importNow: () => ipcRenderer.invoke(CHANNELS.calendarImportNow),
-    getLastImport: () => ipcRenderer.invoke(CHANNELS.calendarGetLastImport)
+    listCalendars: () => ipcRenderer.invoke(CHANNELS.calendarListCalendars)
+  },
+  extensions: {
+    runNow: (id) => ipcRenderer.invoke(CHANNELS.extensionsRunNow, id),
+    getLastRuns: () => ipcRenderer.invoke(CHANNELS.extensionsGetLastRuns)
+  },
+  obsidian: {
+    pickVault: () => ipcRenderer.invoke(CHANNELS.obsidianPickVault),
+    open: (target) => ipcRenderer.invoke(CHANNELS.obsidianOpen, target)
+  },
+  microsoftTodo: {
+    listAccounts: () => ipcRenderer.invoke(CHANNELS.microsoftTodoListAccounts)
   },
   activity: {
     getAll: () => ipcRenderer.invoke(CHANNELS.activityGetAll),

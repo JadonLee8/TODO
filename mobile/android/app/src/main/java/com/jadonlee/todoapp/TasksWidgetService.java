@@ -1,0 +1,98 @@
+package com.jadonlee.todoapp;
+
+import android.content.Context;
+import android.content.Intent;
+import android.view.View;
+import android.widget.RemoteViews;
+import android.widget.RemoteViewsService;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+/** Supplies the widget's task rows from the saved snapshot. */
+public class TasksWidgetService extends RemoteViewsService {
+
+    @Override
+    public RemoteViewsFactory onGetViewFactory(Intent intent) {
+        return new Rows(getApplicationContext());
+    }
+
+    private static final class Rows implements RemoteViewsFactory {
+
+        private final Context context;
+        private JSONArray tasks = new JSONArray();
+        private int text;
+        private int muted;
+        private int danger;
+
+        Rows(Context context) {
+            this.context = context;
+        }
+
+        @Override
+        public void onCreate() {}
+
+        @Override
+        public void onDataSetChanged() {
+            JSONObject snapshot = WidgetStore.load(context);
+            JSONArray loaded = snapshot == null ? null : snapshot.optJSONArray("tasks");
+            tasks = loaded == null ? new JSONArray() : loaded;
+            text = WidgetStore.color(snapshot, "text", "#1E2433");
+            muted = WidgetStore.color(snapshot, "muted", "#5B6475");
+            danger = WidgetStore.color(snapshot, "danger", "#B3261E");
+        }
+
+        @Override
+        public void onDestroy() {}
+
+        @Override
+        public int getCount() {
+            return tasks.length();
+        }
+
+        @Override
+        public RemoteViews getViewAt(int position) {
+            RemoteViews row = new RemoteViews(context.getPackageName(), R.layout.widget_task_row);
+            JSONObject task = tasks.optJSONObject(position);
+            if (task == null) return row;
+
+            int priority = task.optInt("priority", 3);
+            row.setTextViewText(R.id.widget_row_priority, "P" + priority);
+            row.setTextColor(R.id.widget_row_priority, priority == 1 ? danger : muted);
+            row.setTextViewText(R.id.widget_row_title, task.optString("title"));
+            row.setTextColor(R.id.widget_row_title, text);
+            row.setViewVisibility(R.id.widget_row_star, task.optBoolean("starred") ? View.VISIBLE : View.GONE);
+            row.setTextColor(R.id.widget_row_star, text);
+
+            String due = task.isNull("due") ? null : task.optString("due", null);
+            row.setViewVisibility(R.id.widget_row_due, due == null ? View.GONE : View.VISIBLE);
+            if (due != null) {
+                row.setTextViewText(R.id.widget_row_due, due);
+                row.setTextColor(R.id.widget_row_due, task.optBoolean("overdue") ? danger : muted);
+            }
+
+            Intent open = new Intent().putExtra(TasksWidgetProvider.EXTRA_TASK_ID, task.optString("id"));
+            row.setOnClickFillInIntent(R.id.widget_row, open);
+            return row;
+        }
+
+        @Override
+        public RemoteViews getLoadingView() {
+            return null;
+        }
+
+        @Override
+        public int getViewTypeCount() {
+            return 1;
+        }
+
+        @Override
+        public long getItemId(int position) {
+            return position;
+        }
+
+        @Override
+        public boolean hasStableIds() {
+            return false;
+        }
+    }
+}
