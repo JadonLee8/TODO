@@ -12,7 +12,7 @@
     "build:extension": "vite build --config extension/vite.config.ts",
     "build:mobile": "vite build --config mobile/vite.config.ts && cap sync android",
     "android:run": "npm run build:mobile && cap run android",
-    "android:apk": "npm run build:mobile && cd mobile/android && gradlew.bat assembleDebug",
+    "android:apk": "npm run build:mobile && cd mobile/android && .\\gradlew.bat assembleDebug",
     "test": "vitest run",
     "preview": "electron-vite preview",
     "dist": "npm run build && electron-builder --win --publish never"
