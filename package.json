@@ -1,6 +1,6 @@
 {
   "name": "todo-app",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A simple, priority-ranked TODO app backed by a GitHub repo for version-controlled sync.",
   "main": "out/main/index.js",
   "author": "Jadon Lee",
