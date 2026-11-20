@@ -1,0 +1,16 @@
+{
+  "name": "todo-cli",
+  "version": "0.2.0",
+  "description": "The TODO app's tasks from the command line. Build with `npm run build:cli` in the repo root, then `npm install -g ./cli`.",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "todo": "dist/todo.mjs"
+  },
+  "files": [
+    "dist/todo.mjs"
+  ],
+  "engines": {
+    "node": ">=20"
+  }
+}

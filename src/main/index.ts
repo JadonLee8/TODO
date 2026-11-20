@@ -2,6 +2,7 @@ import { app, BrowserWindow, shell } from 'electron'
 import { join } from 'path'
 import { ensureCacheDirs } from './localCache'
 import { registerIpcHandlers } from './ipc'
+import { registerUpdater } from './updater'
 
 // One data folder (%APPDATA%\TODO on Windows) for `npm run dev` and the installed app alike; otherwise dev would use the
 // package name ("todo-app") and the installed app the product name, and each would see a different cache.
@@ -18,6 +19,8 @@ function createWindow(): void {
     minWidth: 700,
     minHeight: 500,
     autoHideMenuBar: true,
+    // The installed app takes its icon from the .exe (build/icon.ico); this is for `npm run dev`.
+    ...(app.isPackaged ? {} : { icon: join(__dirname, '../../build/icon.png') }),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -42,6 +45,7 @@ function createWindow(): void {
 app.whenReady().then(() => {
   ensureCacheDirs()
   registerIpcHandlers()
+  registerUpdater()
   createWindow()
 
   app.on('activate', () => {

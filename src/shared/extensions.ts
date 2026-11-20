@@ -86,18 +86,18 @@ export const EXTENSION_CATALOG: CatalogEntry[] = [
   {
     kind: 'companion',
     id: 'chrome-quick-add',
-    name: 'Chrome quick add',
+    name: 'Chrome extension',
     glyph: '+',
     category: 'Capture',
-    tagline: 'Add the page you are on as a task, from the toolbar or the right-click menu.',
+    tagline: 'Add the page you are on as a task, and keep a list open in Chrome’s side panel.',
     description:
-      'A Chrome extension that writes tasks straight to your tasks repo, so it works while this app is closed. The app picks them up on its next Sync.',
+      'A Chrome extension with its own synced copy of your tasks, so it works while this app is closed: quick add from the toolbar or the right-click menu, and a side panel to tick tasks off. Gmail and GitHub integrations are planned.',
     access: ['Its own GitHub token, scoped to the tasks repo', 'The title and URL of the tab you add from'],
     setup: [
       'Run npm run build:extension in the app’s source folder.',
       'Open chrome://extensions, turn on Developer mode, click Load unpacked and pick extension/dist.',
       'Create a separate fine-grained GitHub token for it (tasks repo only, Contents: read and write).',
-      'Open the extension’s options and enter the repo and token.'
+      'Open the extension’s options, enter the repo and token, and save.'
     ]
   },
   {

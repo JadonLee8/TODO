@@ -2,7 +2,6 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import type {
   EditableLocalSettings,
   LocalSettings,
-  Priority,
   SyncConflict,
   SyncResult,
   SyncedSettings,
@@ -14,6 +13,7 @@ import type {
 import { DEFAULT_LOCAL_SETTINGS, DEFAULT_SYNCED_SETTINGS, MAIN_LIST_ID } from '@shared/types'
 import type { TokenCheckResult } from '@shared/ipc'
 import { newId } from '@shared/id'
+import { createTask, type NewTaskInput } from '@shared/newTask'
 import { taskIdsToArchive } from '@shared/archive'
 import { nextOrderInFolder, nextTopLevelOrder, reorderSidebar, type DropPosition, type SidebarItem } from '@shared/sidebarTree'
 import {
@@ -49,7 +49,7 @@ interface AppState {
   setView: (view: View) => void
   /** Switches to the search view; a blank query returns to the view that was showing before the search. */
   setSearchQuery: (query: string) => void
-  addTask: (input: { title: string; listId: string; notes?: string; priority?: Priority; starred?: boolean }) => Promise<Task>
+  addTask: (input: NewTaskInput) => Promise<Task>
   updateTask: (task: Task) => Promise<void>
   toggleComplete: (task: Task) => Promise<void>
   toggleStarred: (task: Task) => Promise<void>
@@ -91,7 +91,8 @@ interface AppState {
   /** Re-reads tasks, lists and folders after the main process wrote them (an extension's "Run now"). */
   reloadData: () => Promise<void>
 
-  runSync: () => Promise<void>
+  /** Resolves with the result, or null when a sync was already running (another runs when it ends). */
+  runSync: () => Promise<SyncResult | null>
   resolveConflictKeepLocal: (taskId: string) => Promise<void>
   resolveConflictKeepRemote: (taskId: string) => Promise<void>
 }
@@ -209,23 +210,8 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
   // ---- User actions: save and log ----
 
   const addTask = useCallback(
-    async (input: { title: string; listId: string; notes?: string; priority?: Priority; starred?: boolean }) => {
-      const now = new Date().toISOString()
-      const task: Task = {
-        id: newId(),
-        listId: input.listId,
-        title: input.title.trim(),
-        notes: input.notes ?? '',
-        priority: input.priority ?? 3,
-        starred: input.starred ?? false,
-        completed: false,
-        createdAt: now,
-        updatedAt: now,
-        completedAt: null,
-        archived: false,
-        dueDate: null,
-        source: null
-      }
+    async (input: NewTaskInput) => {
+      const task = createTask(input, newId())
       await persistTask(task)
       record(`Added “${task.title}” to ${listName(task.listId)}`, { ...NO_CHANGES, tasks: [{ id: task.id, before: null, after: task }] })
       return task
@@ -502,10 +488,10 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
     setConflicts(nextConflicts)
   }, [])
 
-  const runSync = useCallback(async () => {
+  const runSync = useCallback(async (): Promise<SyncResult | null> => {
     if (syncingRef.current) {
       syncAgain.current = true
-      return
+      return null
     }
     syncingRef.current = true
     setSyncing(true)
@@ -513,6 +499,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }): R
       const result = await window.api.sync.run()
       setLastSyncResult(result)
       await refreshFromCache()
+      return result
     } finally {
       syncingRef.current = false
       setSyncing(false)

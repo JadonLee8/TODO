@@ -29,7 +29,19 @@ function fieldValue(task: Task, field: string): string {
   }
 }
 
-export function ConflictModal({ conflict, onClose }: { conflict: SyncConflict; onClose: () => void }) {
+/** `onResolved` runs after the user picks a side (default: `onClose`), so the caller can move on to the next conflict. */
+export function ConflictModal({
+  conflict,
+  position,
+  onClose,
+  onResolved = onClose
+}: {
+  conflict: SyncConflict
+  /** e.g. "2 of 5", shown when there's more than one conflict. */
+  position?: string
+  onClose: () => void
+  onResolved?: () => void
+}) {
   const { resolveConflictKeepLocal, resolveConflictKeepRemote } = useAppState()
   const { local, remote } = conflict
   const fields = ['title', 'notes', 'priority', 'completed', 'starred', 'dueDate'] as const
@@ -37,20 +49,25 @@ export function ConflictModal({ conflict, onClose }: { conflict: SyncConflict; o
 
   async function keepLocal() {
     await resolveConflictKeepLocal(conflict.taskId)
-    onClose()
+    onResolved()
   }
   async function keepRemote() {
     await resolveConflictKeepRemote(conflict.taskId)
-    onClose()
+    onResolved()
   }
 
   return (
     <div className="overlay centered" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <button className="close-x" onClick={onClose}>
+        <button className="close-x" onClick={onClose} aria-label="Close">
           &#10005;
         </button>
-        <h2>Sync conflict</h2>
+        <h2>Sync conflict{position ? ` (${position})` : ''}</h2>
+        <p className="conflict-task-title">
+          {local.title || 'Untitled'}
+          {local.archived && ' · archived'}
+          {!local.archived && local.completed && ' · completed'}
+        </p>
         <p className="hint">
           This task was edited on two devices before they could sync. Pick which version to keep — the other will be discarded.
         </p>

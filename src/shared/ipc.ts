@@ -46,11 +46,36 @@ export const CHANNELS = {
   obsidianOpen: 'obsidian:open',
   microsoftTodoListAccounts: 'microsoftTodo:listAccounts',
   activityGetAll: 'activity:getAll',
-  activitySave: 'activity:save'
+  activitySave: 'activity:save',
+  updatesGetState: 'updates:getState',
+  updatesCheck: 'updates:check',
+  updatesInstall: 'updates:install',
+  /** Main -> renderer: the update state changed. */
+  updatesChanged: 'updates:changed'
 } as const
 
 /** Result of an operation that can fail with a message for the user (errors don't cross IPC cleanly). */
 export type Outcome<T = undefined> = { ok: true; value: T } | { ok: false; error: string }
+
+/** Where the desktop app's self-update is. Updates come from the repo's GitHub releases (electron-updater). */
+export type UpdateStatus =
+  /** `npm run dev` or the portable .exe: they can't replace themselves. */
+  | { state: 'unsupported'; reason: string }
+  | { state: 'idle' }
+  | { state: 'checking' }
+  | { state: 'upToDate' }
+  /** Found and downloading in the background. */
+  | { state: 'downloading'; version: string; percent: number }
+  /** Downloaded: installs when the app quits, or now with `install()`. */
+  | { state: 'ready'; version: string }
+  | { state: 'error'; message: string }
+
+export interface UpdateState {
+  currentVersion: string
+  status: UpdateStatus
+  /** The releases page, for the release notes and the other downloads. */
+  releasesUrl: string
+}
 
 export interface TokenCheckResult {
   ok: boolean
@@ -73,6 +98,16 @@ export interface Api {
     update(snapshot: WidgetSnapshot): void
     /** Calls `handler` when a tap on the widget opened the app (now or earlier). Returns an unsubscribe. */
     onOpen(handler: (action: WidgetAction) => void): () => void
+  }
+  /** The desktop app's self-update. Absent on Android, where the APK is updated by hand. */
+  updates?: {
+    getState(): Promise<UpdateState>
+    /** Checks GitHub for a newer release and, if there is one, downloads it. Progress arrives through `onChange`. */
+    check(): Promise<void>
+    /** Quits, installs the downloaded update and starts the new version. */
+    install(): Promise<void>
+    /** Calls `handler` on every change of state. Returns an unsubscribe. */
+    onChange(handler: (state: UpdateState) => void): () => void
   }
   tasks: {
     getAll(): Promise<Task[]>

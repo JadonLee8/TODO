@@ -5,6 +5,10 @@ export interface FontOption {
   description: string
   /** CSS font-family stack, starting with the bundled font. */
   family: string
+  /** Every letter the same width. The terminal style needs one, and swaps in JetBrains Mono for any other font. */
+  monospace: boolean
+  /** The closest Android system font family, for the home-screen widget (which can't use the bundled fonts). */
+  androidFamily: string
 }
 
 export const DEFAULT_FONT_ID = 'grotesque'
@@ -14,19 +18,25 @@ export const FONTS: FontOption[] = [
     id: DEFAULT_FONT_ID,
     name: 'Bricolage Grotesque',
     description: 'Lively and slightly condensed. Its weight and width carry the priority levels.',
-    family: "'Bricolage Grotesque Variable', 'Segoe UI', system-ui, sans-serif"
+    family: "'Bricolage Grotesque Variable', 'Segoe UI', system-ui, sans-serif",
+    monospace: false,
+    androidFamily: 'sans-serif-condensed'
   },
   {
     id: 'dot-matrix',
     name: 'Doto',
     description: 'Dot-matrix letters, like a receipt printer or an LED sign.',
-    family: "'Doto Variable', 'Consolas', ui-monospace, monospace"
+    family: "'Doto Variable', 'Consolas', ui-monospace, monospace",
+    monospace: true,
+    androidFamily: 'monospace'
   },
   {
     id: 'mono',
     name: 'JetBrains Mono',
     description: 'A coding font with every letter the same width.',
-    family: "'JetBrains Mono Variable', 'Consolas', ui-monospace, monospace"
+    family: "'JetBrains Mono Variable', 'Consolas', ui-monospace, monospace",
+    monospace: true,
+    androidFamily: 'monospace'
   }
 ]
 

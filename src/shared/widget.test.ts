@@ -72,7 +72,22 @@ describe('widgetSnapshot', () => {
       text: colors.ink,
       muted: colors.slate,
       accent: colors.highlighter,
-      danger: colors.danger
+      danger: colors.danger,
+      ok: colors.ok
     })
+  })
+
+  it('carries the style and the closest Android font', () => {
+    const appearance = DEFAULT_SYNCED_SETTINGS.appearance
+    const standard = widgetSnapshot([], DEFAULT_SYNCED_SETTINGS, NOW)
+    expect(standard).toMatchObject({ style: 'standard', fontFamily: 'sans-serif-condensed' })
+
+    const mono = widgetSnapshot([], { ...DEFAULT_SYNCED_SETTINGS, appearance: { ...appearance, fontId: 'mono' } }, NOW)
+    expect(mono).toMatchObject({ style: 'standard', fontFamily: 'monospace' })
+
+    // The terminal style is always monospace, and sits on the page color.
+    const terminal = widgetSnapshot([], { ...DEFAULT_SYNCED_SETTINGS, appearance: { ...appearance, styleId: 'terminal' } }, NOW)
+    expect(terminal).toMatchObject({ style: 'terminal', fontFamily: 'monospace' })
+    expect(terminal.colors.background).toBe(themeColors(resolveTheme(appearance)).paper)
   })
 })

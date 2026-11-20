@@ -6,30 +6,50 @@
     <link rel="stylesheet" href="./src/styles.css" />
   </head>
   <body class="options">
-    <form id="form">
-      <h1><span class="dot"></span> TODO extension settings</h1>
-      <p class="hint">
-        Tasks you add are written straight to your tasks repo on GitHub; the desktop app picks them up on its next Sync.
-        Use a <strong>separate</strong> fine-grained personal access token scoped to only the tasks repo, with
-        <em>Contents: Read and write</em>, so you can revoke it on its own.
-      </p>
-      <label class="field"><span>Repo owner</span><input id="owner" type="text" required /></label>
-      <label class="field"><span>Repo name</span><input id="repo" type="text" required /></label>
-      <label class="field"><span>Branch</span><input id="branch" type="text" placeholder="main" /></label>
-      <label class="field">
-        <span>Personal access token</span>
-        <input id="token" type="password" placeholder="github_pat_..." autocomplete="off" />
-      </label>
-      <p class="hint warn">
-        The token is stored in Chrome's extension storage on this computer. Unlike the desktop app's token, it is not
-        encrypted by the operating system, so anyone with access to your Chrome profile could read it.
-      </p>
-      <div class="row">
-        <button type="submit" class="btn primary">Save</button>
-        <button type="button" id="test" class="btn">Test connection</button>
+    <h1><svg class="logo" width="26" height="26" viewBox="0 0 64 64" aria-hidden="true"><path class="logo-line" d="M14 34 L27 47 L50 17" stroke-width="5" stroke-linejoin="round" /><circle class="logo-commit" cx="14" cy="34" r="5.5" stroke-width="4" /><circle class="logo-commit" cx="27" cy="47" r="5.5" stroke-width="4" /><circle class="logo-head" cx="50" cy="17" r="8" stroke-width="4" /></svg> TODO extension</h1>
+
+    <section class="section">
+      <h2>Tasks repo</h2>
+      <form id="form">
+        <p class="hint">
+          The extension keeps its own copy of your tasks and syncs it with your tasks repo on GitHub, like the desktop and
+          Android apps. Use a <strong>separate</strong> fine-grained personal access token scoped to only the tasks repo,
+          with <em>Contents: Read and write</em>, so you can revoke it on its own.
+        </p>
+        <label class="field"><span>Repo owner</span><input id="owner" type="text" required /></label>
+        <label class="field"><span>Repo name</span><input id="repo" type="text" required /></label>
+        <label class="field"><span>Branch</span><input id="branch" type="text" placeholder="main" /></label>
+        <label class="field">
+          <span>Personal access token</span>
+          <input id="token" type="password" placeholder="github_pat_..." autocomplete="off" />
+        </label>
+        <p class="hint small">
+          The token is stored in Chrome's extension storage on this computer. Unlike the desktop app's token, it is not
+          encrypted by the operating system, so anyone with access to your Chrome profile could read it.
+        </p>
+        <div class="row">
+          <button type="submit" class="btn primary">Save</button>
+          <button type="button" id="test" class="btn">Test connection</button>
+        </div>
+        <div id="status" class="status" role="status"></div>
+      </form>
+    </section>
+
+    <section class="section">
+      <h2>Sync</h2>
+      <p class="hint">Changes go up a couple of seconds after you make them. New changes from your other devices come down when you open the side panel and every 15 minutes.</p>
+      <div class="row center">
+        <button type="button" id="sync" class="btn">Sync now</button>
+        <span id="sync-status" class="hint small" role="status"></span>
       </div>
-      <div id="status" class="status" role="status"></div>
-    </form>
+    </section>
+
+    <section class="section">
+      <h2>Integrations</h2>
+      <p class="hint">What the extension connects to. More are coming; each asks for access to its site only when you turn it on.</p>
+      <ul id="integrations" class="integrations"></ul>
+    </section>
+
     <script type="module" src="./src/options.ts"></script>
   </body>
 </html>

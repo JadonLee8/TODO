@@ -65,6 +65,13 @@ export const BUILT_IN_THEMES: Theme[] = [
     base: { background: '#ffffff', primary: '#000000', secondary: '#ffe600' },
     // Darker secondary text and stronger lines than the derived ones.
     overrides: { sidebar: '#efefef', slate: '#333333', faint: '#555555', hairline: '#8a8a8a' }
+  },
+  {
+    id: 'phosphor',
+    name: 'Phosphor',
+    description: 'Near-black with grey text and a green prompt, like a terminal. Made for the terminal style.',
+    base: { background: '#0c0d0c', primary: '#c8ccc8', secondary: '#2d4a32' },
+    overrides: { ok: '#6ad08a', danger: '#ff7b6b' }
   }
 ]
 

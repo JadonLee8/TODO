@@ -102,11 +102,35 @@ select {
 }
 
 .sidebar-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   font-size: 18px;
   font-weight: 780;
   font-stretch: 80%;
   letter-spacing: 0.01em;
   padding: 0 8px 8px;
+}
+
+/* The mark (components/Logo.tsx) in the theme's colors; the hollow commits take the surface they sit on. */
+.logo {
+  flex-shrink: 0;
+  --logo-surface: var(--paper);
+}
+.sidebar .logo {
+  --logo-surface: var(--sidebar);
+}
+.logo-line {
+  fill: none;
+  stroke: var(--ink);
+}
+.logo-commit {
+  fill: var(--logo-surface);
+  stroke: var(--ink);
+}
+.logo-head {
+  fill: var(--highlighter);
+  stroke: var(--ink);
 }
 
 .sidebar-search {
@@ -465,8 +489,32 @@ select {
 }
 
 .conflict-count {
+  font: inherit;
   font-size: 13px;
   color: var(--danger);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.update-ready {
+  font: inherit;
+  font-size: 13px;
+  color: var(--ok);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.conflict-task-title {
+  margin: 0 0 8px;
+  font-weight: 600;
 }
 
 .sync-button {
@@ -1320,13 +1368,19 @@ input[type='checkbox'] {
   border-color: var(--ink);
 }
 
-.font-sample {
+.font-sample,
+.style-sample {
   width: 40px;
   flex-shrink: 0;
   text-align: center;
   font-size: 22px;
   font-weight: 700;
   line-height: 1;
+}
+
+.style-terminal .style-sample {
+  font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
+  font-size: 18px;
 }
 
 .base-colors {

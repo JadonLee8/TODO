@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>TODO</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body class="panel">
+    <header class="header">
+      <svg class="logo" width="18" height="18" viewBox="0 0 64 64" aria-hidden="true"><path class="logo-line" d="M14 34 L27 47 L50 17" stroke-width="5" stroke-linejoin="round" /><circle class="logo-commit" cx="14" cy="34" r="5.5" stroke-width="4" /><circle class="logo-commit" cx="27" cy="47" r="5.5" stroke-width="4" /><circle class="logo-head" cx="50" cy="17" r="8" stroke-width="4" /></svg>
+      <label class="visually-hidden" for="list">List</label>
+      <select id="list" class="list-select"></select>
+      <button type="button" id="sync" class="icon-button" aria-label="Sync now">&#8645;</button>
+      <button type="button" id="options-link" class="icon-button" aria-label="Settings">&#9881;</button>
+    </header>
+
+    <div id="setup" class="notice" hidden>
+      Connect your tasks repo to see your tasks here.
+      <button type="button" id="open-options" class="btn primary">Open settings</button>
+    </div>
+
+    <main id="main">
+      <form id="add-form" class="add-form">
+        <label class="visually-hidden" for="add">Add a task</label>
+        <input id="add" type="text" placeholder="Add a task   p1 * due:fri" autocomplete="off" />
+      </form>
+      <ul id="tasks" class="tasks"></ul>
+      <p id="empty" class="hint" hidden>Nothing to do here.</p>
+      <button type="button" id="toggle-done" class="link-button" hidden></button>
+    </main>
+
+    <footer id="status" class="status panel-status" role="status"></footer>
+    <script type="module" src="./src/sidepanel.ts"></script>
+  </body>
+</html>

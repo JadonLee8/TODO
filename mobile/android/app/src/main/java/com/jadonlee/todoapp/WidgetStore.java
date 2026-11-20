@@ -2,6 +2,9 @@ package com.jadonlee.todoapp;
 
 import android.content.Context;
 import android.graphics.Color;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.style.TypefaceSpan;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -37,5 +40,26 @@ final class WidgetStore {
         } catch (IllegalArgumentException e) {
             return Color.parseColor(fallback);
         }
+    }
+
+    /** Whether the app is in its terminal style (shared/styles.ts), which the widget mirrors. */
+    static boolean terminal(JSONObject snapshot) {
+        return snapshot != null && "terminal".equals(snapshot.optString("style"));
+    }
+
+    /** The system font family closest to the app's font (the snapshot's `fontFamily`). */
+    static String fontFamily(JSONObject snapshot) {
+        String family = snapshot == null ? "" : snapshot.optString("fontFamily", "");
+        return family.isEmpty() ? "sans-serif" : family;
+    }
+
+    /**
+     * Text in a font family. RemoteViews can't set a typeface, but a TypefaceSpan with a family name is parcelable,
+     * so it reaches the launcher with the text.
+     */
+    static CharSequence inFamily(CharSequence text, String family) {
+        SpannableString styled = new SpannableString(text);
+        styled.setSpan(new TypefaceSpan(family), 0, styled.length(), Spanned.SPAN_INCLUSIVE_EXCLUSIVE);
+        return styled;
     }
 }

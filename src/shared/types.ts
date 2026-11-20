@@ -144,6 +144,8 @@ export interface AppearanceSettings {
   customThemes: Theme[]
   /** The font in use (see shared/fonts.ts). */
   fontId: string
+  /** The layout the app is drawn in: 'standard' or 'terminal' (see shared/styles.ts). */
+  styleId: string
 }
 
 /** Built-in extensions (see shared/extensions.ts for the catalog). */
@@ -177,7 +179,8 @@ export const DEFAULT_SYNCED_SETTINGS: SyncedSettings = {
   appearance: {
     themeId: 'paper',
     customThemes: [],
-    fontId: 'grotesque'
+    fontId: 'grotesque',
+    styleId: 'standard'
   },
   extensions: {
     installed: [],

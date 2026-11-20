@@ -9,6 +9,9 @@ export function FontSettingsSection() {
   return (
     <div className="settings-section">
       <h3>Font</h3>
+      {appearance.styleId === 'terminal' && !active.monospace && (
+        <p className="hint">The terminal style needs letters of one width, so it uses JetBrains Mono instead.</p>
+      )}
       <div className="option-list" role="radiogroup" aria-label="Font">
         {FONTS.map((font) => (
           <button

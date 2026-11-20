@@ -9,6 +9,7 @@ import '@fontsource-variable/bricolage-grotesque/standard.css'
 import '@fontsource-variable/doto/index.css'
 import '@fontsource-variable/jetbrains-mono/index.css'
 import './styles/global.css'
+import './styles/terminal.css'
 
 applyCachedAppearance()
 

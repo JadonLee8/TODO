@@ -1,6 +1,6 @@
 name: Release
 
-# Push a tag like v0.2.0 to build the Windows installer, the portable .exe, the Android APK and the Chrome extension,
+# Push a tag like v0.2.0 to build the Windows installer, the portable .exe, the Android APK, the Chrome extension and the CLI,
 # and publish them as a GitHub release. The tag sets the version, so package.json's version doesn't need bumping by hand.
 on:
   push:
@@ -29,6 +29,10 @@ jobs:
       - run: npm test
       - run: npm run dist
       - run: npm run build:extension
+      - run: npm run build:cli
+      - name: Copy the CLI
+        shell: bash
+        run: cp cli/dist/todo.mjs "dist/todo-cli-$GITHUB_REF_NAME.mjs"
       # Sign the APK with the same debug key as local builds (secret ANDROID_DEBUG_KEYSTORE = base64 of
       # ~/.android/debug.keystore), so a release installs over an earlier release or a local `npm run android:run`.
       # Without the secret Gradle makes a throwaway key, and updating needs an uninstall first.
@@ -45,8 +49,9 @@ jobs:
       - name: Zip the Chrome extension
         shell: pwsh
         run: Compress-Archive -Path extension/dist/* -DestinationPath "dist/TODO-chrome-extension-$($env:GITHUB_REF_NAME).zip"
+      # latest.yml and the installer's .blockmap are what the desktop app's self-update reads (src/main/updater.ts).
       - name: Publish release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/*.exe dist/*.apk dist/*.zip --title "$GITHUB_REF_NAME" --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" dist/*.exe dist/*.exe.blockmap dist/latest.yml dist/*.apk dist/*.zip dist/*.mjs --title "$GITHUB_REF_NAME" --generate-notes

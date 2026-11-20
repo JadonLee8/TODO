@@ -2,10 +2,12 @@ import type { SyncedSettings, Task } from './types'
 import { MAIN_LIST_ID } from './types'
 import { rankTasks } from './ranking'
 import { resolveTheme, themeColors } from './themes'
-import { localDateString } from './calendar'
+import { resolveFont } from './fonts'
+import { fontForStyle, resolveStyle, type StyleId } from './styles'
+import { localDateString, shortDueDate } from './calendar'
 
 /**
- * What the Android home-screen widget shows: the top of the ranked Tasks list, in the current theme's colors. The app
+ * What the Android home-screen widget shows: the top of the ranked Tasks list, in the current theme, font and style. The app
  * hands a fresh snapshot to the widget after every change; the widget itself never reads tasks or syncs.
  */
 
@@ -23,12 +25,18 @@ export interface WidgetSnapshot {
   /** Open tasks in the Tasks list (the widget shows the first few). */
   openCount: number
   tasks: WidgetTask[]
+  /** The terminal style draws the widget as a shell listing (square corners, `[ ] p1 title` rows, a prompt as the title). */
+  style: StyleId
+  /** The Android system font family closest to the app's font (widgets can't use the bundled fonts). */
+  fontFamily: string
   colors: {
     background: string
     text: string
     muted: string
     accent: string
     danger: string
+    /** The terminal style's prompt color. */
+    ok: string
   }
 }
 
@@ -42,6 +50,7 @@ export function widgetSnapshot(tasks: Task[], settings: SyncedSettings, now: Dat
   const open = tasks.filter((t) => t.listId === MAIN_LIST_ID && !t.completed && !t.archived)
   const today = localDateString(now)
   const colors = themeColors(resolveTheme(settings.appearance))
+  const style = resolveStyle(settings.appearance.styleId)
   return {
     openCount: open.length,
     tasks: rankTasks(open, settings.ranking, now)
@@ -53,17 +62,20 @@ export function widgetSnapshot(tasks: Task[], settings: SyncedSettings, now: Dat
           title: t.title,
           priority: t.priority,
           starred: t.starred,
-          due: t.dueDate ? shortDate(t.dueDate, now) : null,
+          due: t.dueDate ? shortDueDate(t.dueDate, now) : null,
           overdue: dueDay !== null && dueDay < today
         }
       }),
-    colors: { background: colors.paperRaised, text: colors.ink, muted: colors.slate, accent: colors.highlighter, danger: colors.danger }
+    style: style.id,
+    fontFamily: fontForStyle(style, resolveFont(settings.appearance.fontId)).androidFamily,
+    colors: {
+      // The terminal style sits on the page color itself, like the app's terminal.
+      background: style.id === 'terminal' ? colors.paper : colors.paperRaised,
+      text: colors.ink,
+      muted: colors.slate,
+      accent: colors.highlighter,
+      danger: colors.danger,
+      ok: colors.ok
+    }
   }
-}
-
-/** Due dates are stored as midnight UTC of the due day, so format the UTC date. Year only when it isn't this year. */
-function shortDate(iso: string, now: Date): string {
-  const date = new Date(iso)
-  const thisYear = date.getUTCFullYear() === now.getFullYear()
-  return date.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', ...(thisYear ? {} : { year: 'numeric' }) })
 }

@@ -37,6 +37,25 @@ Releases are built by GitHub Actions: push a tag such as `v0.2.0` and `.github/w
    - Paste the token and click **Save token**, then **Test connection** to confirm.
 4. Click **Sync** to do your first push/pull.
 
+## Terminal style and the `todo` CLI
+
+**Settings › Style › Terminal** turns the app into a shell: your tasks are an `ls` listing above a prompt, and you type commands. It works with every theme and font (it swaps a proportional font for JetBrains Mono; the **Phosphor** theme is made for it), on the phone (with a row of extra keys) and in the home-screen widget. `exit` goes back to the standard style. Click a `[ ]` to finish a task, a title to open it, or a number to type it.
+
+The same commands run from a real terminal with the `todo` CLI:
+
+```
+npm run build:cli && npm install -g ./cli   # puts `todo` on your PATH (Node 20+)
+todo login                                  # repo + a fine-grained token (Contents: read and write)
+todo ls                                     # numbered listing of ~, the main Tasks list
+todo add Renew passport p2 due:fri          # p1–p5, * or -s to star, due:<date>, -l <list>
+todo done 1                                 # numbers refer to the last listing; 1-3 and 1,4 work too
+todo                                        # no command: an interactive shell with tab completion
+```
+
+`todo help` lists everything: `cd`, `tree`, `find`, `pri`, `star`, `due`, `mv`, `rename`, `note`, `cat`, `rm`, `mkdir`, `rmdir`, `resolve`, `sync`, `status`, `style`, `theme`, `font`. Dates can be `today`, `tomorrow`, `fri`, `+3d`, `+2w`, `12-24`, `2026-12-24` or `none`.
+
+The CLI is its own device, like the phone: it keeps a local cache in `%APPDATA%\TODO\cli` (or `~/.config/todo/cli`; set `TODO_CLI_HOME` to move it) and pulls before and pushes after each command. `--offline` skips that once; `todo config autosync off` leaves it to `todo sync`. The token is stored in a plain file there, readable only by your user; set `TODO_GITHUB_TOKEN` instead to keep it out of the file. Use a separate token from the desktop app's. Each release also attaches the CLI as a single file (`todo-cli-<version>.mjs`, run with `node`).
+
 ## Android app
 
 The same React UI in a Capacitor shell (`mobile/`), with its own storage, syncing with the same repo through the same sync code as the desktop app.
@@ -44,7 +63,7 @@ The same React UI in a Capacitor shell (`mobile/`), with its own storage, syncin
 - **Phone layout**: the sidebar is a slide-in drawer (☰), task details and Settings open full screen, and the back button closes whatever is on top. The Board view and Extensions are desktop-only.
 - **Auto-sync** is on by default on the phone: it syncs when the app opens or comes back to the front (at most once a minute) and a few seconds after a change. Turn it off in Settings to sync only with the Sync button.
 - **Share to add**: share a page or some text from any app and pick **TODO**. It becomes a task in Tasks (a browser's page title becomes the title and the link goes in the notes) and opens so you can adjust it.
-- **Home-screen widget**: long-press the home screen → **Widgets** → **TODO**. It shows the top of the ranked Tasks list in your theme's colors; tap a task to open it, or **+** to add one. The widget doesn't sync on its own, so it is as fresh as the last time the app ran.
+- **Home-screen widget**: long-press the home screen → **Widgets** → **TODO**. It shows the top of the ranked Tasks list in your theme's colors, font and style (in the terminal style, as a listing); tap a task to open it, or **+** to add one. The widget doesn't sync on its own, so it is as fresh as the last time the app ran.
 - **Storage**: tasks live in the app's IndexedDB and the GitHub token in the Android Keystore.
 
 Build and install (a debug build, sideloaded):
@@ -91,7 +110,7 @@ npm run android:apk      # build:mobile, then a debug APK (mobile/android/app/bu
 
 Open **Extensions** at the bottom of the sidebar. Built-in extensions are installed for all your devices at once (it's a synced setting), and each device does its own setup, like connecting an account or picking a folder. Installed extensions run as part of **Sync**: after pulling, extensions that create tasks run and Sync pushes again, then extensions that write elsewhere run on the final state. **Run now** in the marketplace runs one without syncing.
 
-The marketplace also lists companion apps (the Chrome quick-add below, and watchwise for YouTube notes) with their setup steps.
+The marketplace also lists companion apps (the Chrome extension below, and watchwise for YouTube notes) with their setup steps.
 
 ### Obsidian
 
@@ -133,19 +152,21 @@ Imports your lists and tasks from the Microsoft To Do app installed on the same 
 
 Your Tasks list goes into Tasks; other lists become lists (merged into an existing list with the same name); groups become folders; important tasks are starred; steps become a `- [ ]` checklist in the notes; due dates carry over. Completed tasks finished longer ago than the archive setting are imported straight into the archive. Flagged-email lists and reminders/repeats aren't imported. Each task is imported once (a per-device ledger plus ids derived from the Microsoft To Do ids), so while the extension stays installed, every Sync brings in only tasks added in Microsoft To Do since; uninstall it when you've moved over.
 
-### Chrome quick add (companion)
+### Chrome extension (companion)
 
-Adds tasks from the browser without the desktop app running: it writes `data/tasks/<uuid>.json` straight to your tasks repo, and the app picks the task up on its next Sync.
+Your tasks in Chrome, without the desktop app running. Like the Android app, the extension keeps its own copy of your tasks and syncs it with your tasks repo: changes go up a couple of seconds after you make them, and other devices' changes come down when you open the side panel and every 15 minutes. It wears your synced theme, font and style.
 
 - **Toolbar popup**: title and notes are prefilled with the tab's title and URL; pick a priority, a list and ★, then **Add**.
 - **Right-click → Add to TODO** on a page, link or selected text opens the popup prefilled with that.
+- **Side panel** (☰ in the popup): one list's tasks next to the page you're on, in the app's order. Tick tasks off, star them, and add new ones with the terminal's syntax (`Buy milk p2 * due:fri -l Groceries`). Sync conflicts are resolved in the app.
+- **Integrations** (in the options page): quick add today; Gmail and GitHub are planned. Each asks for access to its site only when you turn it on.
 
 Setup:
 
 1. `npm run build:extension`
 2. In Chrome, open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and pick the `extension/dist` folder.
 3. Create a **separate** fine-grained PAT for the extension (only the tasks repo, *Contents: Read and write*) so it can be revoked on its own.
-4. Open the extension's options (⚙ in the popup), enter the repo owner, name, branch and the token, then **Test connection**.
+4. Open the extension's options (⚙ in the popup), enter the repo owner, name, branch and the token, then **Test connection** and **Save**. Saving starts the first sync.
 
 ⚠️ The extension keeps its token in `chrome.storage.local`, which is *not* encrypted by the OS the way the desktop app's DPAPI-protected token is. Anyone with access to your Chrome profile could read it, which is another reason to give it its own narrowly scoped token.
 

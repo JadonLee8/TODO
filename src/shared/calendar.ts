@@ -53,6 +53,16 @@ export function localDateString(now: Date): string {
 }
 
 /**
+ * A due date for display: "Nov 20", with the year only when it isn't this year. Due dates are stored as midnight UTC
+ * of the due day, so this formats the UTC date.
+ */
+export function shortDueDate(iso: string, now: Date): string {
+  const date = new Date(iso)
+  const thisYear = date.getUTCFullYear() === now.getFullYear()
+  return date.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', ...(thisYear ? {} : { year: 'numeric' }) })
+}
+
+/**
  * Imported, incomplete tasks whose due date is before today and that should be bumped to P1.
  * `alreadyPromoted` holds ids promoted before, so lowering one by hand afterwards sticks.
  */

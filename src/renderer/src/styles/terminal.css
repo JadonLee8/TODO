@@ -1,0 +1,206 @@
+/*
+ * The terminal style (shared/styles.ts, components/terminal/TerminalShell.tsx): the app as a shell. One monospace
+ * size, no corners, no shadows, no boxes; color only where a terminal would use it (the prompt, errors, a mark for
+ * starred tasks). Colors come from the theme's variables like the rest of the app, so every theme works here.
+ * Everything is scoped to html[data-style='terminal'], which theme.ts sets.
+ */
+
+html[data-style='terminal'] {
+  --radius: 0;
+  --shadow-float: none;
+}
+
+/* The standard overlays (a task's panel, Settings, conflicts) keep their layout but lose the softness. */
+html[data-style='terminal'] *,
+html[data-style='terminal'] *::before,
+html[data-style='terminal'] *::after {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+html[data-style='terminal'] body {
+  font-size: 13.5px;
+  font-weight: 400;
+}
+
+html[data-style='terminal'] .panel,
+html[data-style='terminal'] .modal {
+  border: 1px solid var(--hairline);
+  background: var(--paper);
+}
+
+html[data-style='terminal'] .modal h2,
+html[data-style='terminal'] .settings-section h3 {
+  font-size: 13.5px;
+  font-weight: 700;
+  font-stretch: normal;
+  text-transform: lowercase;
+}
+
+html[data-style='terminal'] .modal h2::before,
+html[data-style='terminal'] .settings-section h3::before {
+  content: '# ';
+  color: var(--faint);
+}
+
+.term-root {
+  height: 100%;
+}
+
+.term {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 12px 16px 10px;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 13.5px;
+  line-height: 1.5;
+  cursor: text;
+}
+
+.term-listing,
+.term-scrollback {
+  scrollbar-width: thin;
+  scrollbar-color: var(--hairline) transparent;
+}
+
+.term-listing {
+  flex: 1 1 auto;
+  min-height: 4.5em;
+  overflow-y: auto;
+}
+
+.term-scrollback {
+  flex: 0 1 auto;
+  max-height: 45%;
+  margin-top: 6px;
+  padding-top: 6px;
+  overflow-y: auto;
+  border-top: 1px dashed var(--hairline);
+}
+
+.term-line {
+  min-height: 1.5em;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.term-row:hover {
+  background: var(--hover);
+}
+
+.term-click {
+  cursor: pointer;
+}
+
+.term-click:hover {
+  text-decoration: underline;
+}
+
+.term-ps1 {
+  white-space: nowrap;
+}
+
+.term-path {
+  font-weight: 700;
+}
+
+.tone-dim {
+  color: var(--faint);
+}
+
+.tone-error {
+  color: var(--danger);
+}
+
+.tone-ok {
+  color: var(--ok);
+}
+
+.tone-bold {
+  font-weight: 700;
+}
+
+/* The app's one accent, the highlighter, marks starred tasks. */
+.tone-mark {
+  background: var(--highlighter);
+  color: var(--ink);
+}
+
+.term-prompt {
+  display: flex;
+  align-items: baseline;
+  margin-top: 2px;
+}
+
+.term .term-prompt input {
+  flex: 1;
+  min-width: 0;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  caret-color: var(--ink);
+}
+
+.term-question {
+  white-space: pre-wrap;
+}
+
+.term-status {
+  margin-left: 12px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+.term-keys {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.term-keys button {
+  flex: 0 0 auto;
+  min-width: 40px;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--hairline);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+}
+
+.term-keys button:active {
+  background: var(--hover);
+}
+
+/* Phone: the whole screen, inside the system bars, with room to tap a row. */
+html[data-platform='android'] .term {
+  padding: calc(10px + var(--inset-top)) 12px calc(8px + var(--inset-bottom));
+  font-size: 13px;
+}
+
+html[data-platform='android'] .term-row {
+  padding: 3px 0;
+}
+
+html[data-platform='android'] .term-scrollback {
+  max-height: 35%;
+}
+
+html[data-font='dot-matrix'] .term {
+  font-weight: 600;
+}
+
+html[data-font='dot-matrix'] .term .tone-bold,
+html[data-font='dot-matrix'] .term .term-path {
+  font-weight: 900;
+}

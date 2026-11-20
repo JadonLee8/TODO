@@ -172,6 +172,60 @@ describe('syncNow', () => {
     expect(github.task('1').title).toBe('From A')
   })
 
+  it('keeps the remote side without asking when both sides made the same change at different times', async () => {
+    const github = fakeGitHub()
+    const a = createMemoryCacheStore()
+    const b = createMemoryCacheStore()
+    edit(a, task('1', { completed: true, completedAt: '2026-01-02T00:00:00.000Z' }))
+    await sync(a)
+    await sync(b)
+
+    // Both devices auto-archive it, a minute apart.
+    edit(a, task('1', { completed: true, completedAt: '2026-01-02T00:00:00.000Z', archived: true, updatedAt: '2026-01-09T00:01:00.000Z' }))
+    await sync(a)
+    edit(b, task('1', { completed: true, completedAt: '2026-01-02T00:00:00.000Z', archived: true, updatedAt: '2026-01-09T00:00:00.000Z' }))
+    expect(await sync(b)).toMatchObject({ pushed: 0, conflicts: [], error: null })
+    expect(b.getSyncMeta().conflictTaskIds).toEqual([])
+    expect(b.getSyncMeta().dirtyTaskIds).toEqual([])
+    expect(b.getTask('1')).toEqual(github.task('1'))
+
+    // And it pulls later edits from elsewhere as usual.
+    edit(a, task('1', { title: 'Later', completed: true, archived: true }))
+    await sync(a)
+    expect(await sync(b)).toMatchObject({ pulled: 1 })
+    expect(b.getTask('1')?.title).toBe('Later')
+  })
+
+  it('clears a saved conflict whose sides differ only in timestamps', async () => {
+    const github = fakeGitHub()
+    const b = createMemoryCacheStore()
+    edit(b, task('1'))
+    await sync(b)
+    // A conflict saved by an older version of the sync.
+    const remote = github.task('1')
+    b.writeTaskLocal(task('1', { updatedAt: '2026-01-05T00:00:00.000Z' }))
+    b.markTaskDirty('1')
+    b.markTaskConflict('1', remote)
+
+    expect(await sync(b)).toMatchObject({ pushed: 0, conflicts: [], error: null })
+    expect(b.getSyncMeta().conflictTaskIds).toEqual([])
+    expect(b.getConflictRemote('1')).toBeNull()
+    expect(b.getTask('1')).toEqual(remote)
+  })
+
+  it('still asks when the sides differ in more than timestamps', async () => {
+    fakeGitHub()
+    const a = createMemoryCacheStore()
+    const b = createMemoryCacheStore()
+    edit(a, task('1'))
+    await sync(a)
+    await sync(b)
+    edit(a, task('1', { archived: true, updatedAt: '2026-01-09T00:01:00.000Z' }))
+    await sync(a)
+    edit(b, task('1', { completed: true, updatedAt: '2026-01-09T00:00:00.000Z' }))
+    expect((await sync(b)).conflicts).toHaveLength(1)
+  })
+
   it('pushes many new tasks as one commit', async () => {
     const github = fakeGitHub()
     const a = createMemoryCacheStore()

@@ -18,7 +18,8 @@ export default defineConfig({
       input: {
         popup: resolve(__dirname, 'popup.html'),
         options: resolve(__dirname, 'options.html'),
-        background: resolve(__dirname, 'src/background.ts')
+        sidepanel: resolve(__dirname, 'sidepanel.html'),
+        background: resolve(__dirname, 'src/background/index.ts')
       },
       output: {
         // The manifest refers to the service worker by a fixed name.

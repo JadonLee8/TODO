@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useAppState } from '../state/AppStateContext'
 import { ThemeSettingsSection } from './ThemeSettingsSection'
 import { FontSettingsSection } from './FontSettingsSection'
+import { StyleSettingsSection } from './StyleSettingsSection'
+import { UpdatesSection } from './UpdatesSection'
 
 export function SettingsModal({
   onClose,
@@ -68,7 +70,8 @@ export function SettingsModal({
         </button>
         <h2>Settings</h2>
 
-        <ThemeSettingsSection style={{ borderTop: 'none', marginTop: 0 }} />
+        <StyleSettingsSection style={{ borderTop: 'none', marginTop: 0 }} />
+        <ThemeSettingsSection />
         <FontSettingsSection />
 
         <div className="settings-section">
@@ -202,6 +205,8 @@ export function SettingsModal({
             Open extensions
           </button>
         </div>
+
+        <UpdatesSection />
       </div>
     </div>
   )

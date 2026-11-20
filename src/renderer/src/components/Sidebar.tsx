@@ -5,6 +5,7 @@ import { buildSidebarTree, type DropPosition, type SidebarItem } from '@shared/s
 import { useAppState } from '../state/AppStateContext'
 import { useConfirm } from './ConfirmDialog'
 import { TASK_MIME, dropTargetProps, mergeDropProps, sortDropProps, startSortDrag, type SortKind } from '../dnd'
+import Logo from './Logo'
 
 /** Which folders are collapsed is a per-device preference, so it lives in localStorage rather than the repo. */
 const COLLAPSED_KEY = 'todo.collapsedFolders'
@@ -286,7 +287,10 @@ export function Sidebar({
 
   return (
     <aside className="sidebar">
-      <div className="sidebar-title">TODO</div>
+      <div className="sidebar-title">
+        <Logo size={20} />
+        TODO
+      </div>
 
       <div className="sidebar-search">
         <span className="nav-icon">&#8981;</span>

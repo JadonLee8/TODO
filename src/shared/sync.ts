@@ -11,6 +11,8 @@ import { GitHubConflictError, commitNewFiles, deleteFile, getDataTree, getFileCo
  * Conflict policy (deliberately simple, scoped to what was asked for):
  *  - Task edited on both sides differently -> surfaced as a SyncConflict for the user to resolve. Until it is
  *    resolved the task is neither pushed nor pulled.
+ *  - Task edited on both sides to the same content (say both devices auto-archived it), differing only in
+ *    `updatedAt`/`completedAt` -> GitHub's copy is kept without asking (`sameTaskContent`).
  *  - Task deleted locally but edited remotely -> the remote edit wins, local deletion is dropped.
  *  - Task edited locally but deleted remotely -> the local edit wins, file is recreated on push.
  *  - lists.json / folders.json / settings.json (single shared files) -> last writer to sync wins;
@@ -49,6 +51,16 @@ export async function syncNow(cache: CacheStore, token: string, owner: string, r
   }
 
   try {
+    // ---- Phase 0: conflicts with nothing to choose between (saved before sameTaskContent existed) take GitHub's copy ----
+    for (const id of cache.getSyncMeta().conflictTaskIds) {
+      const local = cache.getTask(id)
+      const remote = cache.getConflictRemote(id)
+      if (local && remote && sameTaskContent(local, remote)) {
+        cache.acceptRemoteTask(remote)
+        cache.clearTaskConflict(id)
+      }
+    }
+
     // ---- Phase 1 (bulk): many new tasks at once (an import) go up as one commit ----
     const start = cache.getSyncMeta()
     const newTasks = start.dirtyTaskIds
@@ -91,9 +103,17 @@ export async function syncNow(cache: CacheStore, token: string, owner: string, r
         const remoteFile = await getFileContent(token, owner, repo, path, branch)
         if (remoteFile) {
           const remoteTask = JSON.parse(remoteFile.content) as Task
-          conflicts.push({ taskId: id, local, remote: remoteTask, base: cache.getSyncedTask(id) })
-          cache.markTaskConflict(id, remoteTask)
           setSha(path, remoteFile.sha)
+          if (sameTaskContent(local, remoteTask)) {
+            // Nothing for the user to choose: keep GitHub's copy. An edit made while the push was in flight stays
+            // dirty and goes up next sync, now against the current sha.
+            const current = cache.getTask(id)
+            if (current && serialize(current) === content) cache.acceptRemoteTask(remoteTask)
+            else cache.setSyncedTask(remoteTask)
+          } else {
+            conflicts.push({ taskId: id, local, remote: remoteTask, base: cache.getSyncedTask(id) })
+            cache.markTaskConflict(id, remoteTask)
+          }
         } else {
           setSha(path, undefined) // remote deleted it; recreate on next push
         }
@@ -233,6 +253,19 @@ function taskPath(id: string): string {
 function idFromTaskPath(path: string): string {
   return path.replace('data/tasks/', '').replace(/\.json$/, '')
 }
+/** Fields that record when a change happened rather than what it was; two devices making the same change differ only here. */
+const TIMESTAMP_FIELDS = new Set<string>(['updatedAt', 'completedAt'])
+
+/** Whether two versions of a task say the same thing, ignoring when each was last touched or completed. */
+export function sameTaskContent(a: Task, b: Task): boolean {
+  const fields = new Set([...Object.keys(a), ...Object.keys(b)])
+  for (const field of fields) {
+    if (TIMESTAMP_FIELDS.has(field)) continue
+    if (JSON.stringify(a[field as keyof Task]) !== JSON.stringify(b[field as keyof Task])) return false
+  }
+  return true
+}
+
 function serialize(value: unknown): string {
   return JSON.stringify(value, null, 2)
 }

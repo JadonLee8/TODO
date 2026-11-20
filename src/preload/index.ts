@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { CHANNELS } from '@shared/ipc'
-import type { Api } from '@shared/ipc'
+import type { Api, UpdateState } from '@shared/ipc'
 
 const api: Api = {
   platform: 'desktop',
@@ -52,6 +52,18 @@ const api: Api = {
   activity: {
     getAll: () => ipcRenderer.invoke(CHANNELS.activityGetAll),
     save: (entries) => ipcRenderer.invoke(CHANNELS.activitySave, entries)
+  },
+  updates: {
+    getState: () => ipcRenderer.invoke(CHANNELS.updatesGetState),
+    check: () => ipcRenderer.invoke(CHANNELS.updatesCheck),
+    install: () => ipcRenderer.invoke(CHANNELS.updatesInstall),
+    onChange: (handler) => {
+      const listener = (_e: Electron.IpcRendererEvent, state: UpdateState): void => handler(state)
+      ipcRenderer.on(CHANNELS.updatesChanged, listener)
+      return () => {
+        ipcRenderer.removeListener(CHANNELS.updatesChanged, listener)
+      }
+    }
   }
 }
 

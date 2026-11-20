@@ -1,17 +1,44 @@
 {
   "manifest_version": 3,
-  "name": "TODO quick add",
-  "description": "Add tasks to your GitHub-backed TODO app from the browser.",
-  "version": "0.1.0",
+  "name": "TODO",
+  "description": "Your GitHub-backed TODO list in Chrome: quick add from any page, and your tasks in the side panel.",
+  "version": "0.2.0",
+  "minimum_chrome_version": "116",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "action": {
     "default_title": "Add to TODO",
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    }
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
   },
   "options_page": "options.html",
   "background": {
     "service_worker": "background.js",
     "type": "module"
   },
-  "permissions": ["storage", "contextMenus", "activeTab"],
-  "host_permissions": ["https://api.github.com/*"]
+  "permissions": [
+    "storage",
+    "unlimitedStorage",
+    "contextMenus",
+    "activeTab",
+    "alarms",
+    "sidePanel"
+  ],
+  "host_permissions": [
+    "https://api.github.com/*"
+  ],
+  "optional_host_permissions": [
+    "https://mail.google.com/*",
+    "https://github.com/*"
+  ]
 }

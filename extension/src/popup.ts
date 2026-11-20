@@ -1,6 +1,12 @@
 import type { Priority } from '@shared/types'
-import { MAIN_LIST_ID } from '@shared/types'
-import { addTask, fetchListGroups, loadConfig, type Prefill } from './todo'
+import { fillListSelect, listGroups } from './config'
+import { applyCachedLook, applyLook } from './look'
+import { send } from './messages'
+import { PREFILL_KEY, type Prefill } from './integrations/quickAdd'
+
+/** The toolbar popup: add a task, prefilled with the current tab (or what the right-click menu sent). */
+
+applyCachedLook()
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
 
@@ -20,14 +26,13 @@ function setStatus(message: string, kind: 'ok' | 'error' | '' = '') {
 }
 
 function renderPriority() {
-  const picker = $<HTMLDivElement>('priority')
-  picker.replaceChildren(
+  $<HTMLDivElement>('priority').replaceChildren(
     ...([1, 2, 3, 4, 5] as Priority[]).map((p) => {
       const chip = document.createElement('button')
       chip.type = 'button'
       chip.textContent = `P${p}`
-      chip.className = `priority-chip${p === priority ? ' selected' : ''}`
-      if (p === priority) chip.style.background = `var(--p${p})`
+      chip.className = `priority-chip p${p}${p === priority ? ' selected' : ''}`
+      chip.setAttribute('aria-pressed', String(p === priority))
       chip.onclick = () => {
         priority = p
         renderPriority()
@@ -41,14 +46,12 @@ function renderStar() {
   starButton.textContent = starred ? '★' : '☆'
   starButton.classList.toggle('starred', starred)
   starButton.setAttribute('aria-pressed', String(starred))
-  starButton.title = starred ? 'Unmark important' : 'Mark important'
 }
 
 async function prefill() {
-  // Set by the "Add to TODO" context menu just before it opened this popup.
-  const { prefill: fromMenu } = (await chrome.storage.session.get('prefill')) as { prefill?: Prefill }
+  const fromMenu = (await chrome.storage.session.get(PREFILL_KEY))[PREFILL_KEY] as Prefill | undefined
   if (fromMenu) {
-    await chrome.storage.session.remove('prefill')
+    await chrome.storage.session.remove(PREFILL_KEY)
     titleInput.value = fromMenu.title
     notesInput.value = fromMenu.notes
     return
@@ -62,14 +65,17 @@ async function prefill() {
 
 async function init() {
   const openOptions = () => void chrome.runtime.openOptionsPage()
-  $('options-link').onclick = (e) => {
-    e.preventDefault()
-    openOptions()
-  }
+  $('options-link').onclick = openOptions
   $('open-options').onclick = openOptions
+  // Looked up now: opening the side panel needs the click's user gesture, so nothing may be awaited before it.
+  const windowId = (await chrome.windows.getCurrent()).id!
+  $('open-panel').onclick = () => {
+    void chrome.sidePanel.open({ windowId }).then(() => window.close())
+  }
 
-  const config = await loadConfig()
-  if (!config) {
+  const state = await send({ type: 'snapshot' })
+  applyLook(state.settings)
+  if (!state.configured) {
     $('setup').hidden = false
     $('fields').hidden = true
     return
@@ -84,35 +90,23 @@ async function init() {
   await prefill()
   titleInput.select()
 
-  try {
-    const [groups, stored] = await Promise.all([fetchListGroups(config), chrome.storage.local.get('lastListId')])
-    for (const group of groups) {
-      const parent = group.label ? Object.assign(document.createElement('optgroup'), { label: group.label }) : listSelect
-      for (const list of group.lists) parent.append(new Option(list.name, list.id))
-      if (parent !== listSelect) listSelect.append(parent)
-    }
-    const lastListId = (stored as { lastListId?: string }).lastListId
-    listSelect.value = groups.some((g) => g.lists.some((l) => l.id === lastListId)) ? lastListId! : MAIN_LIST_ID
-  } catch (err) {
-    listSelect.append(new Option('Tasks', MAIN_LIST_ID))
-    setStatus(`Couldn't load your lists: ${err instanceof Error ? err.message : err}`, 'error')
-  }
+  const { lastListId } = (await chrome.storage.local.get('lastListId')) as { lastListId?: string }
+  fillListSelect(listSelect, listGroups(state.lists, state.folders), lastListId)
 
   $<HTMLFormElement>('form').onsubmit = async (e) => {
     e.preventDefault()
     if (!titleInput.value.trim()) return
     addButton.disabled = true
-    setStatus('Adding…')
     try {
-      await addTask(config, { title: titleInput.value, notes: notesInput.value, listId: listSelect.value, priority, starred })
+      await send({ type: 'addTask', input: { title: titleInput.value, notes: notesInput.value, listId: listSelect.value, priority, starred } })
       await chrome.storage.local.set({ lastListId: listSelect.value })
-      setStatus('Added. It will show up in the app on its next Sync.', 'ok')
-      setTimeout(() => window.close(), 1200)
+      setStatus('Added. It syncs in a moment.', 'ok')
+      setTimeout(() => window.close(), 900)
     } catch (err) {
       addButton.disabled = false
-      setStatus(`Couldn't add the task: ${err instanceof Error ? err.message : err}`, 'error')
+      setStatus(`Couldn’t add the task: ${err instanceof Error ? err.message : err}`, 'error')
     }
   }
 }
 
-void init()
+init().catch((err: unknown) => setStatus(err instanceof Error ? err.message : String(err), 'error'))

@@ -8,6 +8,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
+import android.text.style.ForegroundColorSpan;
+import android.view.View;
 import android.widget.RemoteViews;
 import org.json.JSONObject;
 
@@ -36,29 +40,49 @@ public class TasksWidgetProvider extends AppWidgetProvider {
         manager.notifyAppWidgetViewDataChanged(ids, R.id.widget_list);
     }
 
-    /** Colors and texts outside the list: everything that changes with the snapshot. */
+    /**
+     * Colors, font, style and texts outside the list: everything that changes with the snapshot. The terminal style
+     * draws a square window titled with a prompt (`todo:~$ ls`) and a bare "+".
+     */
     private static RemoteViews header(Context context) {
         JSONObject snapshot = WidgetStore.load(context);
         int background = WidgetStore.color(snapshot, "background", "#FFFFFF");
         int text = WidgetStore.color(snapshot, "text", "#1E2433");
         int muted = WidgetStore.color(snapshot, "muted", "#5B6475");
         int accent = WidgetStore.color(snapshot, "accent", "#F2E35C");
+        int ok = WidgetStore.color(snapshot, "ok", "#1F7A4D");
+        boolean terminal = WidgetStore.terminal(snapshot);
+        String family = WidgetStore.fontFamily(snapshot);
 
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_tasks);
+        views.setImageViewResource(R.id.widget_background, terminal ? R.drawable.widget_background_square : R.drawable.widget_background);
         views.setInt(R.id.widget_background, "setColorFilter", background);
         views.setTextColor(R.id.widget_title, text);
         views.setTextColor(R.id.widget_count, muted);
         views.setTextColor(R.id.widget_empty, muted);
         views.setInt(R.id.widget_add_background, "setColorFilter", accent);
-        views.setTextColor(R.id.widget_add_label, text);
+        views.setViewVisibility(R.id.widget_add_background, terminal ? View.GONE : View.VISIBLE);
+        views.setTextColor(R.id.widget_add_label, terminal ? ok : text);
+        views.setTextViewText(R.id.widget_add_label, WidgetStore.inFamily("+", family));
+
+        if (terminal) {
+            SpannableStringBuilder prompt = new SpannableStringBuilder("todo");
+            prompt.setSpan(new ForegroundColorSpan(ok), 0, prompt.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            prompt.append(":~$ ls");
+            views.setTextViewText(R.id.widget_title, WidgetStore.inFamily(prompt, family));
+        } else {
+            views.setTextViewText(R.id.widget_title, WidgetStore.inFamily(context.getString(R.string.widget_title), family));
+        }
 
         if (snapshot == null) {
             views.setTextViewText(R.id.widget_count, "");
-            views.setTextViewText(R.id.widget_empty, context.getString(R.string.widget_not_loaded));
+            views.setTextViewText(R.id.widget_empty, WidgetStore.inFamily(context.getString(R.string.widget_not_loaded), family));
         } else {
             int open = snapshot.optInt("openCount", 0);
-            views.setTextViewText(R.id.widget_count, open == 0 ? "" : String.valueOf(open));
-            views.setTextViewText(R.id.widget_empty, context.getString(R.string.widget_empty));
+            String count = open == 0 ? "" : terminal ? "[" + open + "]" : String.valueOf(open);
+            views.setTextViewText(R.id.widget_count, WidgetStore.inFamily(count, family));
+            String empty = terminal ? "nothing to do" : context.getString(R.string.widget_empty);
+            views.setTextViewText(R.id.widget_empty, WidgetStore.inFamily(empty, family));
         }
         return views;
     }

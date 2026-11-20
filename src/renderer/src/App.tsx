@@ -1,19 +1,22 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Task } from '@shared/types'
 import { MAIN_LIST_ID } from '@shared/types'
 import { resolveTheme } from '@shared/themes'
 import { resolveFont } from '@shared/fonts'
+import { resolveStyle } from '@shared/styles'
 import { useAppState } from './state/AppStateContext'
 import { applyAppearance } from './theme'
 import { Sidebar } from './components/Sidebar'
 import { TaskListView } from './components/TaskListView'
 import { TaskDetailPanel } from './components/TaskDetailPanel'
 import { ConflictModal } from './components/ConflictModal'
+import { useUpdateState } from './components/UpdatesSection'
 import { SettingsModal } from './components/SettingsModal'
 import { ActivityModal } from './components/ActivityModal'
 import { ExtensionsModal } from './components/extensions/ExtensionsModal'
 import { StatsView } from './components/StatsView'
 import { ContentHeader } from './components/ContentHeader'
+import { TerminalShell } from './components/terminal/TerminalShell'
 import { catalogEntry } from '@shared/extensions'
 import { sharedTextToTask } from '@shared/share'
 import { widgetSnapshot } from '@shared/widget'
@@ -26,18 +29,29 @@ export default function App() {
   const [extensionsOpen, setExtensionsOpen] = useState(false)
   const [openTaskId, setOpenTaskId] = useState<string | null>(null)
   const [openConflictTaskId, setOpenConflictTaskId] = useState<string | null>(null)
+  const update = useUpdateState()
   // On a phone the sidebar is a drawer over the list (see the Android rules in global.css).
   const [drawerOpen, setDrawerOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  /** Bumped to make the terminal style start an `add` at its prompt (the widget's "+"). */
+  const [terminalAddRequest, setTerminalAddRequest] = useState(0)
 
   const savedTheme = useMemo(() => resolveTheme(syncedSettings.appearance), [syncedSettings.appearance])
   const font = resolveFont(syncedSettings.appearance.fontId)
+  const style = resolveStyle(syncedSettings.appearance.styleId)
+  const terminal = style.id === 'terminal'
   useEffect(() => {
     // Wait for settings to load, so the cached look isn't replaced by the defaults for a moment.
     if (loading) return
-    if (previewTheme) applyAppearance(previewTheme, font, { remember: false })
-    else applyAppearance(savedTheme, font)
-  }, [loading, savedTheme, previewTheme, font])
+    if (previewTheme) applyAppearance(previewTheme, font, style, { remember: false })
+    else applyAppearance(savedTheme, font, style)
+  }, [loading, savedTheme, previewTheme, font, style])
+
+  // Stable, so the terminal's command host isn't rebuilt on every render.
+  const openSettings = useCallback(() => {
+    setDrawerOpen(false)
+    setSettingsOpen(true)
+  }, [])
 
   // Ctrl+F / Ctrl+K focus the sidebar search box.
   useEffect(() => {
@@ -81,9 +95,10 @@ export default function App() {
       }
       setOpenTaskId(null)
       setView({ kind: 'list', listId: MAIN_LIST_ID })
-      requestAnimationFrame(() => document.querySelector<HTMLInputElement>('.add-task-bar input')?.focus())
+      if (terminal) setTerminalAddRequest((n) => n + 1)
+      else requestAnimationFrame(() => document.querySelector<HTMLInputElement>('.add-task-bar input')?.focus())
     })
-  }, [loading, setView])
+  }, [loading, setView, terminal])
 
   // Picking a list closes the drawer. Typing a search keeps it open so the box keeps focus.
   useEffect(() => {
@@ -118,10 +133,15 @@ export default function App() {
 
   const actions = (
     <>
+      {update?.status.state === 'ready' && (
+        <button className="update-ready" onClick={() => void window.api.updates?.install()} data-tooltip={`Restart into version ${update.status.version}`}>
+          Update ready
+        </button>
+      )}
       {conflicts.length > 0 && (
-        <span className="conflict-count">
+        <button className="conflict-count" onClick={() => setOpenConflictTaskId(conflicts[0].taskId)}>
           {conflicts.length} unresolved conflict{conflicts.length === 1 ? '' : 's'}
-        </span>
+        </button>
       )}
       <button className="sync-button" onClick={() => void runSync()} disabled={syncing}>
         <span aria-hidden>⇅</span>
@@ -130,13 +150,59 @@ export default function App() {
     </>
   )
 
+  const overlays = (
+    <>
+      {openTaskId &&
+        (() => {
+          const liveTask = tasks.find((t) => t.id === openTaskId)
+          return liveTask ? <TaskDetailPanel task={liveTask} onClose={() => setOpenTaskId(null)} /> : null
+        })()}
+      {openConflictTaskId &&
+        (() => {
+          const index = conflicts.findIndex((c) => c.taskId === openConflictTaskId)
+          if (index < 0) return null
+          // After a pick, go on to the next unresolved conflict (wrapping round), or close when it was the last.
+          const next = conflicts[index + 1] ?? conflicts.find((c) => c.taskId !== openConflictTaskId)
+          return (
+            <ConflictModal
+              conflict={conflicts[index]}
+              position={conflicts.length > 1 ? `${index + 1} of ${conflicts.length}` : undefined}
+              onClose={() => setOpenConflictTaskId(null)}
+              onResolved={() => setOpenConflictTaskId(next?.taskId ?? null)}
+            />
+          )
+        })()}
+      {settingsOpen && (
+        <SettingsModal
+          onClose={() => setSettingsOpen(false)}
+          onOpenActivity={() => {
+            setSettingsOpen(false)
+            setActivityOpen(true)
+          }}
+          onOpenExtensions={() => {
+            setSettingsOpen(false)
+            setExtensionsOpen(true)
+          }}
+        />
+      )}
+      {extensionsOpen && <ExtensionsModal onClose={() => setExtensionsOpen(false)} />}
+      {activityOpen && <ActivityModal onClose={() => setActivityOpen(false)} />}
+    </>
+  )
+
+  if (terminal) {
+    return (
+      <div className="term-root">
+        <TerminalShell onOpenTask={setOpenTaskId} onOpenConflict={setOpenConflictTaskId} onOpenSettings={openSettings} addRequest={terminalAddRequest} />
+        {overlays}
+      </div>
+    )
+  }
+
   return (
     <div className={`app-shell${drawerOpen ? ' drawer-open' : ''}`}>
       <Sidebar
-        onOpenSettings={() => {
-          setDrawerOpen(false)
-          setSettingsOpen(true)
-        }}
+        onOpenSettings={openSettings}
         onOpenExtensions={() => setExtensionsOpen(true)}
         onSearchSubmit={() => setDrawerOpen(false)}
         searchInputRef={searchInputRef}
@@ -164,31 +230,7 @@ export default function App() {
         )}
       </main>
 
-      {openTaskId &&
-        (() => {
-          const liveTask = tasks.find((t) => t.id === openTaskId)
-          return liveTask ? <TaskDetailPanel task={liveTask} onClose={() => setOpenTaskId(null)} /> : null
-        })()}
-      {openConflictTaskId &&
-        (() => {
-          const liveConflict = conflicts.find((c) => c.taskId === openConflictTaskId)
-          return liveConflict ? <ConflictModal conflict={liveConflict} onClose={() => setOpenConflictTaskId(null)} /> : null
-        })()}
-      {settingsOpen && (
-        <SettingsModal
-          onClose={() => setSettingsOpen(false)}
-          onOpenActivity={() => {
-            setSettingsOpen(false)
-            setActivityOpen(true)
-          }}
-          onOpenExtensions={() => {
-            setSettingsOpen(false)
-            setExtensionsOpen(true)
-          }}
-        />
-      )}
-      {extensionsOpen && <ExtensionsModal onClose={() => setExtensionsOpen(false)} />}
-      {activityOpen && <ActivityModal onClose={() => setActivityOpen(false)} />}
+      {overlays}
     </div>
   )
 }

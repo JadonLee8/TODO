@@ -22,12 +22,12 @@ const custom: Theme = { ...paper, id: 'mine', name: 'Mine', base: { ...paper.bas
 
 describe('resolveTheme', () => {
   it('finds built-in and custom themes', () => {
-    expect(resolveTheme({ themeId: 'night', customThemes: [], fontId: '' }).name).toBe('Night')
-    expect(resolveTheme({ themeId: 'mine', customThemes: [custom], fontId: '' }).base.primary).toBe('#123456')
+    expect(resolveTheme({ themeId: 'night', customThemes: [], fontId: '', styleId: '' }).name).toBe('Night')
+    expect(resolveTheme({ themeId: 'mine', customThemes: [custom], fontId: '', styleId: '' }).base.primary).toBe('#123456')
   })
 
   it('falls back to the default theme for an unknown id', () => {
-    expect(resolveTheme({ themeId: 'deleted', customThemes: [], fontId: '' }).id).toBe(DEFAULT_THEME_ID)
+    expect(resolveTheme({ themeId: 'deleted', customThemes: [], fontId: '', styleId: '' }).id).toBe(DEFAULT_THEME_ID)
   })
 })
 
